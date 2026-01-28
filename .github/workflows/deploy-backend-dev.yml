@@ -1,0 +1,46 @@
+name: Deploy Backend DEV
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  deploy:
+    name: Deploy to Lightsail (DEV)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.BACKEND_DEV_IP }}
+          username: ubuntu
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script: |
+            set -e
+
+            echo "📦 Moving to backend directory"
+            cd /var/www/backend
+
+            echo "🔐 Fixing git safe directory"
+            git config --global --add safe.directory /var/www/backend
+
+            echo "🔄 Fetching latest code"
+            git fetch origin
+
+            echo "🌿 Switching to dev branch"
+            git checkout dev
+
+            echo "🧹 Cleaning local changes"
+            git reset --hard origin/dev
+            git clean -fd
+
+            echo "📦 Installing dependencies"
+            npm install --production
+
+            echo "🚀 Reloading PM2 process"
+            pm2 reload backend || pm2 start ecosystem.config.js --env dev
+
+            echo "✅ Deployment completed successfully"
