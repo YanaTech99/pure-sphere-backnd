@@ -546,13 +546,11 @@ export const baneersadd = async (req, res) => {
           type: QueryTypes.UPDATE
         }
       );
-
       return res.json({
         success: true,
         message: "Banner updated successfully"
       });
     }
-
     // ===============================
     // 🔥 ADD BANNER
     // ===============================
@@ -572,7 +570,6 @@ export const baneersadd = async (req, res) => {
         type: QueryTypes.INSERT
       }
     );
-
     return res.json({
       success: true,
       message: "Banner added successfully"
@@ -587,11 +584,9 @@ export const baneersadd = async (req, res) => {
   }
 };
 ///////////////////////////////////
-
 export const bannerslist = async (req, res) => {
   try {
     const { id } = req.params;
-
     let query = `
       SELECT 
         id,
@@ -615,18 +610,15 @@ export const bannerslist = async (req, res) => {
     });
     // 🔹 Base URL
     const baseUrl = `${req.protocol}://${req.get("host")}`;
-
     banners.forEach(banner => {
       banner.image = banner.image
         ? `${baseUrl}/${banner.image}`
         : null;
     });
-
     return res.json({
       success: true,
       data: id ? banners[0] || null : banners,
     });
-
   } catch (error) {
     console.error("List Banners Error:", error);
     return res.status(500).json({
@@ -635,7 +627,6 @@ export const bannerslist = async (req, res) => {
     });
   }
 };
-
 ////////////////////////////////////////
 export const blogsadd = async (req, res) => {
   try {
@@ -774,7 +765,6 @@ export const blogslist = async (req, res) => {
       replacements,
       type: QueryTypes.SELECT,
     });
-
     if (id && blogs.length === 0) {
       return res.status(404).json({
         success: false,
@@ -812,15 +802,14 @@ export const platesadd = async (req, res) => {
       name,
       description,
       price_per_week,
-      duration,
       status,
     } = req.body;
     const image = req.file ? req.file.filename : null;
     // 🔹 Validation
-    if (!name || !price_per_week || !duration) {
+    if (!name || !price_per_week) {
       return res.status(400).json({
         success: false,
-        message: "Name, price_per_week and duration are required",
+        message: "Name and price_per_week are required",
       });
     }
     // ===============================
@@ -831,7 +820,6 @@ export const platesadd = async (req, res) => {
       if (image) {
         imageQuery = ", image = :image";
       }
-
       await db.sequelize.query(
         `
         UPDATE plates 
@@ -839,7 +827,6 @@ export const platesadd = async (req, res) => {
           name = :name,
           description = :description,
           price_per_week = :price_per_week,
-          duration = :duration,
           status = :status
           ${imageQuery}
         WHERE id = :id
@@ -850,7 +837,6 @@ export const platesadd = async (req, res) => {
             name,
             description: description || "",
             price_per_week,
-            duration,
             status: status ?? 1,
             image,
           },
@@ -862,23 +848,21 @@ export const platesadd = async (req, res) => {
         message: "Plate updated successfully",
       });
     }
-
     // ===============================
     // 🔥 ADD PLATE
     // ===============================
     await db.sequelize.query(
       `
       INSERT INTO plates
-      (name, description, price_per_week, duration, image, status, created_at)
+      (name, description, price_per_week, image, status, created_at)
       VALUES
-      (:name, :description, :price_per_week, :duration, :image, :status, NOW())
+      (:name, :description, :price_per_week, :image, :status, NOW())
       `,
       {
         replacements: {
           name,
           description: description || "",
           price_per_week,
-          duration,
           image,
           status: status ?? 1,
         },
@@ -900,8 +884,9 @@ export const platesadd = async (req, res) => {
 /////////////////////////////////////
 export const plateslist = async (req, res) => {
   try {
-    const plates = await db.sequelize.query(
-      `
+    const { id } = req.params;
+
+    let query = `
       SELECT 
         id,
         name,
@@ -913,21 +898,31 @@ export const plateslist = async (req, res) => {
         created_at,
         updated_at
       FROM plates
-      ORDER BY id DESC
-      `,
-      {
-        type: QueryTypes.SELECT,
-      }
-    );
+    `;
+
+    // if id exists, add WHERE
+    if (id) {
+      query += ` WHERE id = :id `;
+    }
+
+    query += ` ORDER BY id DESC`;
+
+    const plates = await db.sequelize.query(query, {
+      replacements: id ? { id } : {},
+      type: QueryTypes.SELECT,
+    });
+
     const baseUrl = `${req.protocol}://${req.get("host")}/uploads/plates`;
+
     const formattedPlates = plates.map((plate) => ({
       ...plate,
       image: plate.image ? `${baseUrl}/${plate.image}` : null,
     }));
+
     return res.json({
       success: true,
       message: "Plates fetched successfully",
-      data: formattedPlates,
+      data: id ? formattedPlates[0] || null : formattedPlates,
     });
   } catch (error) {
     console.error("List Plates Error:", error);
@@ -936,7 +931,8 @@ export const plateslist = async (req, res) => {
       message: "Internal server error",
     });
   }
-}; 
+};
+
 ///////////////////////////
 export const dailydietsadd = async (req, res) => {
   try {
