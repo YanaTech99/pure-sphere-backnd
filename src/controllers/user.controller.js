@@ -143,45 +143,45 @@ export const getProfile = async (req, res) => {
 export const userlist = async (req, res) => {
   try {
     const rows = await db.sequelize.query(
-      `
-      SELECT 
-        u.id AS user_id,
-        u.name,
-        u.mobile,
-        u.email,
-        u.status,
-        u.created_at,
-        u.updated_at,
-        CASE 
-          WHEN up.profile_image IS NULL OR up.profile_image = ''
-          THEN :defaultImage
-          ELSE up.profile_image
-        END AS profile_image,
-        up.gender,
-        up.dob,
-        up.height,
-        up.weight,
-        ua.id AS address_id,
-        ua.type,
-        ua.address,
-        ua.city,
-        ua.state,
-        ua.pincode,
-        ua.is_default,
-        ua.created_at AS address_created_at
-      FROM users u
-      LEFT JOIN user_profiles up ON up.user_id = u.id
-      LEFT JOIN user_addresses ua ON ua.user_id = u.id
-      ORDER BY u.id DESC
-      `,
-      {
-        type: QueryTypes.SELECT,
-        replacements: {
-          defaultImage:
-            "https://randomuser.me/api/portraits/men/75.jpg"
-        }
-      }
-    );
+  `
+  SELECT 
+    u.id AS user_id,
+    u.name,
+    u.mobile,
+    u.email,
+    u.status,
+    DATE_FORMAT(u.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+    DATE_FORMAT(u.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at,
+    CASE 
+      WHEN up.profile_image IS NULL OR up.profile_image = ''
+      THEN :defaultImage
+      ELSE up.profile_image
+    END AS profile_image,
+    up.gender,
+    up.dob,
+    up.height,
+    up.weight,
+    ua.id AS address_id,
+    ua.type,
+    ua.address,
+    ua.city,
+    ua.state,
+    ua.pincode,
+    ua.is_default,
+    DATE_FORMAT(ua.created_at, '%Y-%m-%d %H:%i:%s') AS address_created_at
+  FROM users u
+  LEFT JOIN user_profiles up ON up.user_id = u.id
+  LEFT JOIN user_addresses ua ON ua.user_id = u.id
+  ORDER BY u.id DESC
+  `,
+  {
+    type: QueryTypes.SELECT,
+    replacements: {
+      defaultImage: "https://randomuser.me/api/portraits/men/75.jpg"
+    }
+  }
+);
+
     /* 🔥 GROUP USERS + ADDRESSES */
     const usersMap = {};
 for (const row of rows) {
@@ -900,7 +900,6 @@ export const plateslist = async (req, res) => {
       FROM plates
     `;
 
-    // if id exists, add WHERE
     if (id) {
       query += ` WHERE id = :id `;
     }
@@ -919,11 +918,57 @@ export const plateslist = async (req, res) => {
       image: plate.image ? `${baseUrl}/${plate.image}` : null,
     }));
 
+    // 👉 Agar id aayi hai to daily_diets bhi lao
+    if (id && formattedPlates.length > 0) {
+      const plateId = id;
+
+      // JS se aaj ka day nikal lo (Monday, Tuesday...)
+      const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+      const today = days[new Date().getDay()];
+
+      const dailyDiets = await db.sequelize.query(
+        `
+        SELECT 
+          id,
+          plate_id,
+          day_name,
+          meal_type,
+          item_name,
+          image,
+          description,
+          created_at,
+          updated_at
+        FROM daily_diets
+        WHERE plate_id = :plate_id
+          AND TRIM(day_name) = :today
+        ORDER BY id DESC
+        `,
+        {
+          replacements: {
+            plate_id: plateId,
+            today: today
+          },
+          type: QueryTypes.SELECT,
+        }
+      );
+
+      const baseDietUrl = `${req.protocol}://${req.get("host")}/uploads/daily_diets`;
+
+      const formattedDiets = dailyDiets.map((diet) => ({
+        ...diet,
+        image: diet.image ? `${baseDietUrl}/${diet.image}` : null,
+      }));
+
+      // plate ke andar daily_diets attach karo
+      formattedPlates[0].today_diets = formattedDiets;
+    }
+
     return res.json({
       success: true,
       message: "Plates fetched successfully",
       data: id ? formattedPlates[0] || null : formattedPlates,
     });
+
   } catch (error) {
     console.error("List Plates Error:", error);
     return res.status(500).json({
@@ -932,6 +977,7 @@ export const plateslist = async (req, res) => {
     });
   }
 };
+
 
 ///////////////////////////
 export const dailydietsadd = async (req, res) => {
@@ -1030,29 +1076,46 @@ export const dailydietsadd = async (req, res) => {
 /////////////////////////////////////
 export const dailydietslist = async (req, res) => {
   try {
-    const dailyDiets = await db.sequelize.query(
-      `
+    const { id } = req.params;
+
+    let query = `
       SELECT
         id,
         plate_id,
         day_name,
         meal_type,
         item_name,
-       description,  
+        image,
+        description,
         created_at,
         updated_at
       FROM daily_diets
-      ORDER BY id DESC
-      `,
-      {
-        type: QueryTypes.SELECT,
-      }
-    );
+    `;
+
+    if (id) {
+      query += ` WHERE id = :id `;
+    }
+
+    query += ` ORDER BY id DESC`;
+
+    const dailyDiets = await db.sequelize.query(query, {
+      replacements: id ? { id } : {},
+      type: QueryTypes.SELECT,
+    });
+
+    const baseDietUrl = `${req.protocol}://${req.get("host")}/uploads/daily_diets`;
+
+    const formattedDiets = dailyDiets.map((diet) => ({
+      ...diet,
+      image: diet.image ? `${baseDietUrl}/${diet.image}` : null,
+    }));
+
     return res.json({
       success: true,
       message: "Daily diets fetched successfully",
-      data: dailyDiets,
+      data: id ? formattedDiets[0] || null : formattedDiets
     });
+
   } catch (error) {
     console.error("List Daily Diets Error:", error);
     return res.status(500).json({
@@ -1061,4 +1124,7 @@ export const dailydietslist = async (req, res) => {
     });
   }
 };
+
+
+
 /////////////////////////////////////
