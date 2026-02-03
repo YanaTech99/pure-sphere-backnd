@@ -64,6 +64,7 @@ router.post(
 );
 // List daily diets
 router.get("/dailydietslist", dailydietslist);
+router.get("/dailydietslist/:id", dailydietslist);
 // List plates
 router.get("/plateslist", plateslist);
 router.get("/plateslist/:id", plateslist);
