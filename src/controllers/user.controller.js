@@ -942,10 +942,7 @@ export const dailydietsadd = async (req, res) => {
       day_name,
       meal_type,
       item_name,
-      calories,
-      protein,
-      carbs,
-      fats,
+      description
     } = req.body;
     const image = req.file ? req.file.filename : null;
     // 🔹 Validation
@@ -972,10 +969,7 @@ export const dailydietsadd = async (req, res) => {
           meal_type = :meal_type,
           item_name = :item_name
           ${imageQuery},
-          calories = :calories,
-          protein = :protein,
-          carbs = :carbs,
-          fats = :fats,
+          description = :description,
           updated_at = NOW()
         WHERE id = :id
         `,
@@ -987,10 +981,7 @@ export const dailydietsadd = async (req, res) => {
             meal_type,
             item_name,
             image,
-            calories: calories || 0,
-            protein: protein || 0,
-            carbs: carbs || 0,
-            fats: fats || 0,
+            description: description || "",
           },
           type: QueryTypes.UPDATE,
         }
@@ -1006,9 +997,9 @@ export const dailydietsadd = async (req, res) => {
     await db.sequelize.query(
       `
       INSERT INTO daily_diets
-      (plate_id, day_name, meal_type, item_name, image, calories, protein, carbs, fats, created_at)
+      (plate_id, day_name, meal_type, item_name, image, description, created_at)
       VALUES
-      (:plate_id, :day_name, :meal_type, :item_name, :image, :calories, :protein, :carbs, :fats, NOW())
+      (:plate_id, :day_name, :meal_type, :item_name, :image, :description, NOW())
       `,
       {
         replacements: {
@@ -1017,10 +1008,8 @@ export const dailydietsadd = async (req, res) => {
           meal_type,
           item_name,
           image,
-          calories: calories || 0,
-          protein: protein || 0,
-          carbs: carbs || 0,
-          fats: fats || 0,
+          
+          description: req.body.description || "",
         },
         type: QueryTypes.INSERT,
       }
@@ -1049,10 +1038,7 @@ export const dailydietslist = async (req, res) => {
         day_name,
         meal_type,
         item_name,
-        calories,
-        protein,
-        carbs,
-        fats,
+       description,  
         created_at,
         updated_at
       FROM daily_diets
