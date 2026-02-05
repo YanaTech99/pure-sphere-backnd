@@ -505,19 +505,16 @@ export const plandetail = async (req, res) => {
 export const baneersadd = async (req, res) => {
   try {
     const { id, title, link, status, type } = req.body;
-
     // 🔹 Image path
     const image = req.file
       ? `uploads/banners/${req.file.filename}`
       : null;
-
     if (!title || (!image && !id)) {
       return res.status(400).json({
         success: false,
         message: "title and image are required"
       });
     }
-
     // ===============================
     // 🔥 EDIT BANNER
     // ===============================
@@ -586,7 +583,9 @@ export const baneersadd = async (req, res) => {
 ///////////////////////////////////
 export const bannerslist = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id } = req.params;      // /banners/:id
+    const { type } = req.query;     // /banners?type=home
+
     let query = `
       SELECT 
         id,
@@ -598,27 +597,43 @@ export const bannerslist = async (req, res) => {
         created_at,
         updated_at
       FROM banners
+      WHERE 1=1
     `;
-    // 🔹 If id exists → single record
+
+    // 🔹 Filter by id
     if (id) {
-      query += ` WHERE id = :id`;
+      query += ` AND id = :id`;
     }
+
+    // 🔹 Filter by type
+    if (type) {
+      query += ` AND type = :type`;
+    }
+
     query += ` ORDER BY id DESC`;
+
     const banners = await db.sequelize.query(query, {
       type: QueryTypes.SELECT,
-      replacements: id ? { id } : {},
+      replacements: {
+        ...(id && { id }),
+        ...(type && { type }),
+      },
     });
-    // 🔹 Base URL
+
+    // 🔹 Base URL for image
     const baseUrl = `${req.protocol}://${req.get("host")}`;
+
     banners.forEach(banner => {
       banner.image = banner.image
         ? `${baseUrl}/${banner.image}`
         : null;
     });
+
     return res.json({
       success: true,
       data: id ? banners[0] || null : banners,
     });
+
   } catch (error) {
     console.error("List Banners Error:", error);
     return res.status(500).json({
@@ -918,7 +933,7 @@ export const plateslist = async (req, res) => {
       image: plate.image ? `${baseUrl}/${plate.image}` : null,
     }));
 
-    // 👉 Agar id aayi hai to daily_diets bhi lao
+ 
     if (id && formattedPlates.length > 0) {
       const plateId = id;
 

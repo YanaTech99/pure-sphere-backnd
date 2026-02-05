@@ -10,17 +10,18 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
   "type": "module",
   "dependencies": {
     "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
+    "body-parser": "^2.2.2",
     "cloudinary": "^1.41.3",
     "cors": "^2.8.5",
     "crypto-js": "^4.2.0",
     "dotenv": "^17.2.3",
-    "express": "^5.1.0",
+    "express": "^5.2.1",
+    "firebase-admin": "^13.6.0",
     "ioredis": "^5.8.2",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
@@ -33,5 +34,14 @@
   "devDependencies": {
     "eslint": "^9.39.1",
     "nodemon": "^3.1.11"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YanaTech99/pure-sphere-backnd.git"
+  },
+  "bugs": {
+    "url": "https://github.com/YanaTech99/pure-sphere-backnd/issues"
+  },
+  "homepage": "https://github.com/YanaTech99/pure-sphere-backnd#readme",
+  "description": ""
 }
