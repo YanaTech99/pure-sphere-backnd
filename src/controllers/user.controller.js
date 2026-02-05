@@ -933,7 +933,7 @@ export const plateslist = async (req, res) => {
       image: plate.image ? `${baseUrl}/${plate.image}` : null,
     }));
 
- 
+
     if (id && formattedPlates.length > 0) {
       const plateId = id;
 
