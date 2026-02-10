@@ -1,14 +1,26 @@
 import express from "express";
-import { dailydietslist,dailydietsadd,plateslist,platesadd,updateProfile, getProfile,userlist,useraddressAdd,useraddressList,plansadd,planslist,plandetail,baneersadd,bannerslist,blogsadd,blogslist } from "../controllers/user.controller.js";
+import { addhealthprofile,getnotifications,dailydietslist,dailydietsadd,plateslist,platesadd,updateProfile, getProfile,userlist,useraddressAdd,useraddressList,plansadd,planslist,plandetail,baneersadd,bannerslist,blogsadd,blogslist } from "../controllers/user.controller.js";
 import { uploadProfile } from "../middleware/upload.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { adminKeyMiddleware } from "../middleware/admin.middleware.js";
 import { uploadBanner } from "../middleware/uploadbanner.js";
 import { uploadBlogs } from "../middleware/uploadblogs.js";
 import { uploadPlates } from "../middleware/uploadplates.js";
+import { uploadhealthProfiles } from "../middleware/uploadhealthprofile.js";
 import { uploadDailyDiets } from "../middleware/uploaddailydiets.js";
 
+
 const router = express.Router();
+/////// healthprofile
+router.post(
+  "/healthprofile/add",
+  authMiddleware,
+  uploadhealthProfiles.single("files"),
+  addhealthprofile
+);
+
+
+
 // Update profile
 router.put(
   "/update-profile",
@@ -16,6 +28,8 @@ router.put(
   uploadProfile.single("profile_image"),
   updateProfile
 );
+
+
 // Get profile
 router.get(
   "/profile",
@@ -71,4 +85,6 @@ router.get("/plateslist/:id", plateslist);
 // List blogs
 router.get("/blogslist", blogslist);
 router.get("/blogslist/:id", blogslist);
+
+router.get("/notifications", getnotifications);
 export default router;

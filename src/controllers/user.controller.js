@@ -142,84 +142,107 @@ export const getProfile = async (req, res) => {
 // const DEFAULT_IMAGE = `data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5OjcBCgoKDQwNGg8PGjclHyU3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3N//AABEIAJQApQMBIgACEQEDEQH/...`;
 export const userlist = async (req, res) => {
   try {
-    const rows = await db.sequelize.query(
-  `
-  SELECT 
-    u.id AS user_id,
-    u.name,
-    u.mobile,
-    u.email,
-    u.status,
-    DATE_FORMAT(u.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
-    DATE_FORMAT(u.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at,
-    CASE 
-      WHEN up.profile_image IS NULL OR up.profile_image = ''
-      THEN :defaultImage
-      ELSE up.profile_image
-    END AS profile_image,
-    up.gender,
-    up.dob,
-    up.height,
-    up.weight,
-    ua.id AS address_id,
-    ua.type,
-    ua.address,
-    ua.city,
-    ua.state,
-    ua.pincode,
-    ua.is_default,
-    DATE_FORMAT(ua.created_at, '%Y-%m-%d %H:%i:%s') AS address_created_at
-  FROM users u
-  LEFT JOIN user_profiles up ON up.user_id = u.id
-  LEFT JOIN user_addresses ua ON ua.user_id = u.id
-  ORDER BY u.id DESC
-  `,
-  {
-    type: QueryTypes.SELECT,
-    replacements: {
-      defaultImage: "https://randomuser.me/api/portraits/men/75.jpg"
-    }
-  }
-);
+    const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
 
-    /* 🔥 GROUP USERS + ADDRESSES */
+    const rows = await db.sequelize.query(
+      `
+      SELECT 
+        u.id AS user_id,
+        u.name,
+        u.mobile,
+        u.email,
+        u.status,
+        DATE_FORMAT(u.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+        DATE_FORMAT(u.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at,
+
+        up.profile_image,
+        up.gender,
+        up.dob,
+        up.height,
+        up.weight,
+
+        ua.id AS address_id,
+        ua.type,
+        ua.address,
+        ua.city,
+        ua.state,
+        ua.pincode,
+        ua.is_default,
+        DATE_FORMAT(ua.created_at, '%Y-%m-%d %H:%i:%s') AS address_created_at,
+
+        hp.id AS health_id,
+        hp.files AS health_file,
+        DATE_FORMAT(hp.created_at, '%Y-%m-%d %H:%i:%s') AS health_created_at
+
+      FROM users u
+      LEFT JOIN user_profiles up ON up.user_id = u.id
+      LEFT JOIN user_addresses ua ON ua.user_id = u.id
+      LEFT JOIN health_profiles hp ON hp.user_id = u.id
+      ORDER BY u.id DESC
+      `,
+      {
+        type: QueryTypes.SELECT
+      }
+    );
+const baseUrl = `${req.protocol}://${req.get("host")}`;
     const usersMap = {};
-for (const row of rows) {
-  if (!usersMap[row.user_id]) {
-    usersMap[row.user_id] = {
-      id: row.user_id,
-      name: row.name,
-      mobile: row.mobile,
-      email: row.email,
-      status: row.status,
-      created_at: row.created_at,
-      updated_at: row.updated_at,
-      profile_image: row.profile_image,
-      gender: row.gender,
-      dob: row.dob,
-      height: row.height,
-      weight: row.weight,
-      address: null   // ✅ SINGLE address
-    };
-  }
-  // ✅ Take only ONE address (default first preference)
-  if (row.address_id && !usersMap[row.user_id].address) {
-    usersMap[row.user_id].address = {
-      id: row.address_id,
-      type: row.type,
-      address: row.address,
-      city: row.city,
-      state: row.state,
-      pincode: row.pincode,
-      is_default: row.is_default,
-      created_at: row.address_created_at
-    };
-  }
-}
- return res.json({
+
+    for (const row of rows) {
+      if (!usersMap[row.user_id]) {
+        usersMap[row.user_id] = {
+          id: row.user_id,
+          name: row.name,
+          mobile: row.mobile,
+          email: row.email,
+          status: row.status,
+          created_at: row.created_at,
+          updated_at: row.updated_at,
+
+          // profile image full path
+          profile_image: row.profile_image
+            ? `${baseUrl}${row.profile_image}`
+            : `${baseUrl}/uploads/Default.jpg`,
+
+          gender: row.gender,
+          dob: row.dob,
+          height: row.height,
+          weight: row.weight,
+          address: null,
+          health_profiles: []
+        };
+      }
+
+      // address
+      if (row.address_id && !usersMap[row.user_id].address) {
+        usersMap[row.user_id].address = {
+          id: row.address_id,
+          type: row.type,
+          address: row.address,
+          city: row.city,
+          state: row.state,
+          pincode: row.pincode,
+          is_default: row.is_default,
+          created_at: row.address_created_at
+        };
+      }
+
+      // health profiles
+      if (row.health_id) {
+        usersMap[row.user_id].health_profiles.push({
+          id: row.health_id,
+          file: row.health_file
+            ? `${baseUrl}/${row.health_file}`
+            : null,
+          created_at: row.health_created_at
+        });
+      }
+    }
+
+    return res.json({
       success: true,
-      data: Object.values(replaceNullWithBlank(usersMap))
+      data: Object.values(usersMap)
     });
+
   } catch (error) {
     console.error("User List Error:", error);
     return res.status(500).json({
@@ -227,7 +250,7 @@ for (const row of rows) {
       message: "Internal server error"
     });
   }
-};
+}; 
 //////////////////////////////
 export const useraddressAdd = async (req, res) => {
   const transaction = await db.sequelize.transaction();
@@ -933,7 +956,7 @@ export const plateslist = async (req, res) => {
       image: plate.image ? `${baseUrl}/${plate.image}` : null,
     }));
 
-
+ 
     if (id && formattedPlates.length > 0) {
       const plateId = id;
 
@@ -1143,3 +1166,77 @@ export const dailydietslist = async (req, res) => {
 
 
 /////////////////////////////////////
+export const getnotifications = async (req, res) => {
+  try {
+    const notifications = await db.sequelize.query(
+      `
+      SELECT 
+        n.id,
+        n.title,
+        n.message,
+        n.is_read,
+        n.created_at,
+        u.name AS user_name,
+        u.mobile AS mobile_number
+      FROM notifications n
+      LEFT JOIN users u ON u.id = n.user_id
+      ORDER BY n.id DESC
+      `,
+      {
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    return res.json({
+      success: true,
+      data: notifications,
+    });
+  } catch (error) {
+    console.error("Get Notifications Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+/////////////////////////
+export const addhealthprofile = async (req, res) => {
+  try {
+    const { user_id } = req.body;
+
+    if (!user_id) {
+      return res.status(400).json({
+        success: false,
+        message: "user_id is required",
+      });
+    }
+
+    const filePath = req.file ? req.file.path : null;
+
+    await db.sequelize.query(
+      `
+      INSERT INTO health_profiles (user_id, files, created_at)
+      VALUES (:user_id, :files, NOW())
+      `,
+      {
+        replacements: {
+          user_id,
+          files: filePath,
+        },
+        type: QueryTypes.INSERT,
+      }
+    );
+
+    return res.json({
+      success: true,
+      message: "Health profile added successfully",
+      file: filePath,
+    });
+  } catch (error) {
+    console.error("Add Health Profile Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};

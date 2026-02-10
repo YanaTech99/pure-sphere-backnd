@@ -4,8 +4,6 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import { replaceNullWithBlank } from "../utils/responseHelper.js";
 import { JWT_SECRET, JWT_EXPIRATION } from "../config/config.js";
-
-
 /* SEND OTP */
 export const sendOtp = async (req, res) => {
   const transaction = await db.sequelize.transaction();
@@ -22,7 +20,6 @@ export const sendOtp = async (req, res) => {
           type: QueryTypes.SELECT,
         }
       );
-// console.log(admins.length);
       if (!admins.length) {
         return res.status(401).json({
           success: false,
@@ -31,7 +28,6 @@ export const sendOtp = async (req, res) => {
       }
       const admin = admins[0];
       const match = await bcrypt.compare(password, admin.password);
-
       if (!match) {
         return res.status(401).json({
           success: false,
