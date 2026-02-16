@@ -1,6 +1,62 @@
 import db from "../models/index.js";
 import { QueryTypes } from "sequelize";
 import { replaceNullWithBlank } from "../utils/responseHelper.js";
+import crypto from "crypto";
+
+export const dashboard = async (req, res) => {
+  try {
+    const baseUrl = `${req.protocol}://${req.get("host")}/`;
+    const userId = req.user.id;
+    const { fcm_token } = req.body;
+
+    // update fcm token if provided
+    if (fcm_token) {
+      await db.sequelize.query(
+        "UPDATE users SET fcm_token = ? WHERE id = ?",
+        {
+          replacements: [fcm_token, userId]
+        }
+      );
+    }
+
+    const [banners] = await db.sequelize.query(
+      "SELECT id, title, image, type, link, position, status FROM banners WHERE type = 'header' AND status = 1"
+    );
+
+    const [plates] = await db.sequelize.query(
+      "SELECT id, name, description, price_per_week, duration, image FROM plates WHERE status = 1"
+    );
+
+    const [settings] = await db.sequelize.query(
+      "SELECT notification_enabled, dark_mode, language, instagram_link, facebook_link, youtube_link, twitter_link FROM user_settings",
+    );
+
+    const bannerData = banners.map(banner => ({
+      ...banner,
+      image: banner.image ? baseUrl + banner.image : null
+    }));
+
+    const plateData = plates.map(plate => ({
+      ...plate,
+      image: plate.image ? baseUrl + "uploads/plates/" + plate.image : null
+    }));
+
+    res.json({
+      success: true,
+      message: "Data Get Successfully",
+      banners: bannerData,
+      plates: plateData,
+      settings: settings[0] || {}
+    });
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      message: "Server error"
+    });
+  }
+};
+//////////////////////////
 export const updateProfile = async (req, res) => {
   const t = await db.sequelize.transaction();
   try {
@@ -125,6 +181,11 @@ export const getProfile = async (req, res) => {
       });
     }
     const user = users[0];
+const baseUrl = `${req.protocol}://${req.get("host")}`;
+    // add base url to profile image
+    user.profile_image = user.profile_image
+      ? baseUrl + user.profile_image
+      : null;
     return res.json({
       success: true,
       data: user,
@@ -143,7 +204,6 @@ export const getProfile = async (req, res) => {
 export const userlist = async (req, res) => {
   try {
     const BASE_URL = process.env.BASE_URL || "http://localhost:5000";
-
     const rows = await db.sequelize.query(
       `
       SELECT 
@@ -154,13 +214,11 @@ export const userlist = async (req, res) => {
         u.status,
         DATE_FORMAT(u.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
         DATE_FORMAT(u.updated_at, '%Y-%m-%d %H:%i:%s') AS updated_at,
-
         up.profile_image,
         up.gender,
         up.dob,
         up.height,
         up.weight,
-
         ua.id AS address_id,
         ua.type,
         ua.address,
@@ -169,11 +227,9 @@ export const userlist = async (req, res) => {
         ua.pincode,
         ua.is_default,
         DATE_FORMAT(ua.created_at, '%Y-%m-%d %H:%i:%s') AS address_created_at,
-
         hp.id AS health_id,
         hp.files AS health_file,
         DATE_FORMAT(hp.created_at, '%Y-%m-%d %H:%i:%s') AS health_created_at
-
       FROM users u
       LEFT JOIN user_profiles up ON up.user_id = u.id
       LEFT JOIN user_addresses ua ON ua.user_id = u.id
@@ -338,7 +394,7 @@ export const useraddressList = async (req, res) => {
         pincode,
         is_default,
         created_at
-      FROM user_addresses
+      FROM user_addresses 
       WHERE user_id = :userId
       ORDER BY id DESC
       `,
@@ -608,7 +664,6 @@ export const bannerslist = async (req, res) => {
   try {
     const { id } = req.params;      // /banners/:id
     const { type } = req.query;     // /banners?type=home
-
     let query = `
       SELECT 
         id,
@@ -622,19 +677,15 @@ export const bannerslist = async (req, res) => {
       FROM banners
       WHERE 1=1
     `;
-
     // 🔹 Filter by id
     if (id) {
       query += ` AND id = :id`;
     }
-
     // 🔹 Filter by type
     if (type) {
       query += ` AND type = :type`;
     }
-
     query += ` ORDER BY id DESC`;
-
     const banners = await db.sequelize.query(query, {
       type: QueryTypes.SELECT,
       replacements: {
@@ -642,21 +693,17 @@ export const bannerslist = async (req, res) => {
         ...(type && { type }),
       },
     });
-
     // 🔹 Base URL for image
     const baseUrl = `${req.protocol}://${req.get("host")}`;
-
     banners.forEach(banner => {
       banner.image = banner.image
         ? `${baseUrl}/${banner.image}`
         : null;
     });
-
     return res.json({
       success: true,
       data: id ? banners[0] || null : banners,
     });
-
   } catch (error) {
     console.error("List Banners Error:", error);
     return res.status(500).json({
@@ -1202,17 +1249,14 @@ export const getnotifications = async (req, res) => {
 /////////////////////////
 export const addhealthprofile = async (req, res) => {
   try {
-    const { user_id } = req.body;
-
-    if (!user_id) {
-      return res.status(400).json({
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({
         success: false,
-        message: "user_id is required",
+        message: "Unauthorized",
       });
     }
-
     const filePath = req.file ? req.file.path : null;
-
     await db.sequelize.query(
       `
       INSERT INTO health_profiles (user_id, files, created_at)
@@ -1226,7 +1270,6 @@ export const addhealthprofile = async (req, res) => {
         type: QueryTypes.INSERT,
       }
     );
-
     return res.json({
       success: true,
       message: "Health profile added successfully",
@@ -1240,3 +1283,141 @@ export const addhealthprofile = async (req, res) => {
     });
   }
 };
+
+//////////////////////////////////////////////////
+export const gettransactions = async (req, res) => {
+  try {
+    const transactions = await db.sequelize.query(
+      `
+      SELECT 
+        t.transaction_id,
+        t.booking_id,
+        t.user_id,
+        t.transaction_reference,
+        t.payment_gateway,
+        t.gateway_transaction_id,
+        t.amount,
+        t.payment_type,
+        t.payment_method,
+        t.status,
+        t.gateway_response,
+        t.failure_reason,
+        t.paid_at,
+        u.name AS user_name
+      FROM payment_transactions t
+      LEFT JOIN users u ON u.id = t.user_id
+      ORDER BY t.transaction_id DESC
+      `,
+      {
+        type: QueryTypes.SELECT,
+      }
+    );
+
+    return res.json({
+      success: true,
+      data: transactions,
+    });
+  } catch (error) {
+    console.error("Get Transactions Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+/////////////////////////////////////////////////////////
+export const orderplace = async (req, res) => {
+  const t = await db.sequelize.transaction();
+
+  try {
+    const userId = req.user.id;
+
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      plate_id,
+      plan_duration,
+      plate_type,
+      meal_type,
+      delivery_time,
+      amount
+    } = req.body;
+
+    // verify Razorpay signature
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_SECRET)
+      .update(body.toString())
+      .digest("hex");
+
+    // if (expectedSignature !== razorpay_signature) {
+    //   await t.rollback();
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "Payment verification failed"
+    //   });
+    // }
+
+    // create order
+    const [orderResult] = await db.sequelize.query(
+      `
+      INSERT INTO orders
+      (user_id, plate_id, plan_duration, plate_type, meal_type, delivery_time, price, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'success')
+      `,
+      {
+        replacements: [
+          userId,
+          plate_id,
+          plan_duration,
+          plate_type,
+          meal_type,
+          delivery_time,
+          amount
+        ],
+        transaction: t
+      }
+    );
+
+    const orderId = orderResult;
+    // console.log("dev"+orderId);
+
+    // insert payment transaction
+    await db.sequelize.query(
+      `
+      INSERT INTO payment_transactions
+      (user_id, booking_id, transaction_reference, payment_gateway,
+       gateway_transaction_id, amount, payment_type, payment_method, status, paid_at)
+      VALUES (?, ?, ?, 'razorpay', ?, ?, 'order', 'online', 'success', NOW())
+      `,
+      {
+        replacements: [
+          userId,
+          orderId,
+          "TXN_" + Date.now(),
+          razorpay_payment_id,
+          amount
+        ],
+        transaction: t
+      }
+    );
+    await t.commit();
+    res.json({
+      success: true,
+      message: "Order placed successfully"
+    });
+
+  } catch (error) {
+    await t.rollback();
+    console.log(error);
+    res.status(500).json({
+      message: "Server error"
+    });
+  }
+};
+///////////
+
+

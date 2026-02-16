@@ -1,5 +1,5 @@
 import express from "express";
-import { addhealthprofile,getnotifications,dailydietslist,dailydietsadd,plateslist,platesadd,updateProfile, getProfile,userlist,useraddressAdd,useraddressList,plansadd,planslist,plandetail,baneersadd,bannerslist,blogsadd,blogslist } from "../controllers/user.controller.js";
+import { orderplace,dashboard,gettransactions,addhealthprofile,getnotifications,dailydietslist,dailydietsadd,plateslist,platesadd,updateProfile, getProfile,userlist,useraddressAdd,useraddressList,plansadd,planslist,plandetail,baneersadd,bannerslist,blogsadd,blogslist } from "../controllers/user.controller.js";
 import { uploadProfile } from "../middleware/upload.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { adminKeyMiddleware } from "../middleware/admin.middleware.js";
@@ -19,7 +19,9 @@ router.post(
   addhealthprofile
 );
 
+router.post("/order-place", authMiddleware, orderplace);
 
+router.post("/dashboard", authMiddleware, dashboard);
 
 // Update profile
 router.put(
@@ -49,6 +51,7 @@ router.get("/planslist", planslist);
 // Plan detail
 router.get("/plandetail/:id", plandetail);
 
+router.get("/gettransactions", gettransactions);
 router.post(
   "/banner/add",
   uploadBanner.single("image"),
@@ -87,4 +90,5 @@ router.get("/blogslist", blogslist);
 router.get("/blogslist/:id", blogslist);
 
 router.get("/notifications", getnotifications);
+router.get("/notifications/:id", getnotifications);
 export default router;

@@ -90,14 +90,13 @@ export const sendOtp = async (req, res) => {
         }
       );
 
-      if (!otpData.length || otpData[0].otp != otp) {
+      if (!otpData.length || otpData[0].otp != otp) { 
         await transaction.rollback();
         return res.status(400).json({
           success: false,
           message: "Invalid OTP",
         });
-      }
-
+      }  
       if (new Date(otpData[0].expires_at) < new Date()) {
         await transaction.rollback();
         return res.status(400).json({
@@ -105,7 +104,6 @@ export const sendOtp = async (req, res) => {
           message: "OTP expired",
         });
       }
-
       let users = await db.sequelize.query(
         `SELECT * FROM users WHERE mobile = :mobile LIMIT 1`,
         {
@@ -114,7 +112,6 @@ export const sendOtp = async (req, res) => {
           transaction,
         }
       );
-
       if (!users.length) {
         const [insertId] = await db.sequelize.query(
           `INSERT INTO users (mobile, is_verified, status, created_at, updated_at)
@@ -125,7 +122,6 @@ export const sendOtp = async (req, res) => {
             transaction,
           }
         );
-
         users = await db.sequelize.query(
           `SELECT * FROM users WHERE id = :id LIMIT 1`,
           {
@@ -135,15 +131,12 @@ export const sendOtp = async (req, res) => {
           }
         );
       }
-
       const user = users[0];
-
       const token = jwt.sign(
         { id: user.id, role: "user" },
         process.env.JWT_SECRET,
         { expiresIn: "7d" }
       );
-
       await db.sequelize.query(
         `DELETE FROM user_otps WHERE mobile = :mobile`,
         {
@@ -152,9 +145,7 @@ export const sendOtp = async (req, res) => {
           transaction,
         }
       );
-
       await transaction.commit();
-
       return res.json({
         success: true,
         role: "user",
@@ -162,12 +153,10 @@ export const sendOtp = async (req, res) => {
         user,
       });
     }
-
     return res.status(400).json({
       success: false,
       message: "Invalid request data",
     });
-
   } catch (error) {
     await transaction.rollback();
     console.error("Login Error:", error);
@@ -177,7 +166,6 @@ export const sendOtp = async (req, res) => {
     });
   }
 };
-
 /* VERIFY OTP */
 export const verifyOtp = async (req, res) => {
   const transaction = await db.sequelize.transaction();

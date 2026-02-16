@@ -19,7 +19,6 @@ const fileFilter = (req, file, cb) => {
     cb(new Error("Only images are allowed"), false);
   }
 };
-
 export const uploadDailyDiets = multer({
   storage,
   fileFilter,
