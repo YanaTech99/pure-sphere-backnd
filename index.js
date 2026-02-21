@@ -1,11 +1,10 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const admin = require("firebase-admin");
-
-const serviceAccount = require("./serviceAccountKey.json");
+import express from "express";
+import bodyParser from "body-parser";
+import admin from "firebase-admin";
+import serviceAccount from "./serviceAccountKey.json" assert { type: "json" };
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+  credential: admin.credential.cert(serviceAccount),
 });
 
 const app = express();
@@ -16,10 +15,10 @@ app.post("/send-notification", async (req, res) => {
 
   const message = {
     notification: {
-      title: title,
-      body: body
+      title,
+      body,
     },
-    token: token
+    token,
   };
 
   try {
@@ -27,7 +26,7 @@ app.post("/send-notification", async (req, res) => {
     res.json({ success: true, response });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, error });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
