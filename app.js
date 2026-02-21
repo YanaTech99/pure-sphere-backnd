@@ -5,14 +5,11 @@ import cors from "cors";
 import authRoutes from "./src/routes/auth.routes.js";
 import userRoutes from "./src/routes/user.routes.js";
 import pageRoutes from "./src/routes/page.routes.js";
-import paymentRoutes from "./src/routes/payment.routes.js";
+
 
 dotenv.config();
 
 const app = express();
-
-
-
 /* ================= CORS ================= */
 app.use(cors({
   origin: "*",
@@ -33,7 +30,7 @@ app.get("/", (req, res) => {
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/pages", pageRoutes);
-app.use("/api/v1/payment", paymentRoutes);
+
 
 
 export default app;

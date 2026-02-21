@@ -1,5 +1,5 @@
 import express from "express";
-import { orderplace,dashboard,gettransactions,addhealthprofile,getnotifications,dailydietslist,dailydietsadd,plateslist,platesadd,updateProfile, getProfile,userlist,useraddressAdd,useraddressList,plansadd,planslist,plandetail,baneersadd,bannerslist,blogsadd,blogslist } from "../controllers/user.controller.js";
+import { mealshistory,healthprofilelist,verifyPayment,markAllRead,orderplace,dashboard,gettransactions,addhealthprofile,getnotifications,dailydietslist,dailydietsadd,plateslist,platesadd,updateProfile, getProfile,userlist,useraddressAdd,useraddressList,plansadd,planslist,plandetail,baneersadd,bannerslist,blogsadd,blogslist } from "../controllers/user.controller.js";
 import { uploadProfile } from "../middleware/upload.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { adminKeyMiddleware } from "../middleware/admin.middleware.js";
@@ -23,6 +23,12 @@ router.post("/order-place", authMiddleware, orderplace);
 
 router.post("/dashboard", authMiddleware, dashboard);
 
+router.get("/healthprofilelist",authMiddleware,healthprofilelist);
+router.get("/mealshistory",authMiddleware,mealshistory);
+
+
+
+router.post("/verify-payment", authMiddleware, verifyPayment);
 // Update profile
 router.put(
   "/update-profile",
@@ -52,6 +58,7 @@ router.get("/planslist", planslist);
 router.get("/plandetail/:id", plandetail);
 
 router.get("/gettransactions", gettransactions);
+router.get("/gettransactions:user_id", gettransactions);
 router.post(
   "/banner/add",
   uploadBanner.single("image"),
@@ -90,5 +97,7 @@ router.get("/blogslist", blogslist);
 router.get("/blogslist/:id", blogslist);
 
 router.get("/notifications", getnotifications);
-router.get("/notifications/:id", getnotifications);
+router.get("/markAllRead", markAllRead);
+
+
 export default router;
