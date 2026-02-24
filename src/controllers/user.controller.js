@@ -8,9 +8,6 @@ const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
-
-
-
 /////////////////////////////////////////////
 export const dashboard = async (req, res) => {
   try {
@@ -782,7 +779,7 @@ export const baneersadd = async (req, res) => {
     if (id) {
       await db.sequelize.query(
         `
-        UPDATE banners
+        UPDATE banners 
         SET
           title = :title,
           link = :link,
