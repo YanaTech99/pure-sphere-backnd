@@ -1,5 +1,5 @@
 import express from "express";
-import { mealshistory,healthprofilelist,verifyPayment,markAllRead,orderplace,dashboard,gettransactions,addhealthprofile,getnotifications,dailydietslist,dailydietsadd,plateslist,platesadd,updateProfile, getProfile,userlist,useraddressAdd,useraddressList,plansadd,planslist,plandetail,baneersadd,bannerslist,blogsadd,blogslist } from "../controllers/user.controller.js";
+import { dashboardapp,updateDeliveryStatus,orderslist,createOrder,getdeliveryboyProfile,deliveryboysList,deliveryboysadd,mealshistory,healthprofilelist,verifyPayment,markAllRead,orderplace,dashboard,gettransactions,addhealthprofile,getnotifications,dailydietslist,dailydietsadd,plateslist,platesadd,updateProfile, getProfile,userlist,useraddressAdd,useraddressList,plansadd,planslist,plandetail,baneersadd,bannerslist,blogsadd,blogslist } from "../controllers/user.controller.js";
 import { uploadProfile } from "../middleware/upload.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { adminKeyMiddleware } from "../middleware/admin.middleware.js";
@@ -8,6 +8,8 @@ import { uploadBlogs } from "../middleware/uploadblogs.js";
 import { uploadPlates } from "../middleware/uploadplates.js";
 import { uploadhealthProfiles } from "../middleware/uploadhealthprofile.js";
 import { uploadDailyDiets } from "../middleware/uploaddailydiets.js";
+import { uploadDeliveryBoys } from "../middleware/uploaddeliveryboys.js";
+import { uploadSelfie } from "../middleware/uploadSelfie.js";
 
 
 const router = express.Router();
@@ -19,10 +21,19 @@ router.post(
   addhealthprofile
 );
 
+router.get("/deliveryboysList", deliveryboysList);
+router.get("/deliveryboysList/:id", deliveryboysList);
+router.get("/deliveryboyProfile", authMiddleware, getdeliveryboyProfile);
 router.post("/order-place", authMiddleware, orderplace);
-
+router.post("/createOrder",  createOrder);
+router.get("/orderslist", orderslist);
+router.get("/dashboardapp", dashboardapp);
 router.post("/dashboard", authMiddleware, dashboard);
-
+router.post(
+  "/update-delivery-status",
+  uploadSelfie.single("capture_selfie"),
+  updateDeliveryStatus
+);
 router.get("/healthprofilelist",authMiddleware,healthprofilelist);
 router.get("/mealshistory",authMiddleware,mealshistory);
 
@@ -35,6 +46,18 @@ router.put(
   authMiddleware,
   uploadProfile.single("profile_image"),
   updateProfile
+);
+router.post(
+  "/deliveryboysadd",
+  uploadDeliveryBoys.fields([
+    { name: "profile_image", maxCount: 1 },
+    { name: "vehicle_rc_image", maxCount: 1 },
+    { name: "license_front_image", maxCount: 1 },
+    { name: "license_back_image", maxCount: 1 },
+    { name: "id_front_image", maxCount: 1 },
+    { name: "id_back_image", maxCount: 1 }
+  ]),
+  deliveryboysadd
 );
 
 

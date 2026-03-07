@@ -9,36 +9,60 @@ export const sendOtp = async (req, res) => {
   const transaction = await db.sequelize.transaction();
 
   try {
-    const { phone, otp, password } = req.body;
+   const { phone, otp, password, role = "admin" } = req.body;
 
-    /* ===================== ADMIN LOGIN ===================== */
-    if (phone && password) {
+    
+    if (!phone || !role) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: "Phone and role are required",
+      });
+    }
+
+    /* =========================================================
+       ===================== ADMIN LOGIN =======================
+       ========================================================= */
+    if (role === "admin" && password) {
+
       const admins = await db.sequelize.query(
-        `SELECT * FROM admins WHERE mobile = :phone AND status = 1 LIMIT 1`,
+        `SELECT * FROM admins 
+         WHERE mobile = :phone 
+         AND status = 1 
+         LIMIT 1`,
         {
           replacements: { phone },
           type: QueryTypes.SELECT,
         }
       );
+
       if (!admins.length) {
+        await transaction.rollback();
         return res.status(401).json({
           success: false,
           message: "Invalid admin credentials",
         });
       }
+
       const admin = admins[0];
       const match = await bcrypt.compare(password, admin.password);
+
       if (!match) {
+        await transaction.rollback();
         return res.status(401).json({
           success: false,
           message: "Invalid admin credentials",
         });
       }
+
       const token = jwt.sign(
         { id: admin.id, role: "admin" },
         process.env.JWT_SECRET,
         { expiresIn: "7d" }
       );
+
+      await transaction.commit();
+
       return res.json({
         success: true,
         role: "admin",
@@ -47,13 +71,15 @@ export const sendOtp = async (req, res) => {
           id: admin.id,
           name: admin.name,
           mobile: admin.mobile,
-          role: admin.role,
         },
       });
     }
 
-    /* ===================== USER OTP SEND ===================== */
-    if (phone && !otp) {
+    /* =========================================================
+       ===================== USER OTP SEND =====================
+       ========================================================= */
+    if (role === "user" && phone && !otp) {
+
       const generatedOtp = Math.floor(100000 + Math.random() * 900000);
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
@@ -61,28 +87,37 @@ export const sendOtp = async (req, res) => {
         `INSERT INTO user_otps (mobile, otp, expires_at)
          VALUES (:mobile, :otp, :expires_at)`,
         {
-          replacements: { mobile: phone, otp: generatedOtp, expires_at: expiresAt },
-          type: QueryTypes.INSERT,
+          replacements: {
+            mobile: phone,
+            otp: generatedOtp,
+            expires_at: expiresAt,
+          },
           transaction,
         }
       );
 
       await transaction.commit();
 
-      console.log("OTP:", generatedOtp); // dev only
+      console.log("User OTP:", generatedOtp);
 
       return res.json({
         success: true,
         role: "user",
         message: "OTP sent successfully",
-        otp: generatedOtp
+        otp: generatedOtp, // remove in production
       });
     }
 
-    /* ===================== USER OTP VERIFY ===================== */
-    if (phone && otp) {
+    /* =========================================================
+       ===================== USER OTP VERIFY ===================
+       ========================================================= */
+    if (role === "user" && phone && otp) {
+
       const otpData = await db.sequelize.query(
-        `SELECT * FROM user_otps WHERE mobile = :mobile ORDER BY id DESC LIMIT 1`,
+        `SELECT * FROM user_otps 
+         WHERE mobile = :mobile 
+         ORDER BY id DESC 
+         LIMIT 1`,
         {
           replacements: { mobile: phone },
           type: QueryTypes.SELECT,
@@ -90,13 +125,14 @@ export const sendOtp = async (req, res) => {
         }
       );
 
-      if (!otpData.length || otpData[0].otp != otp) { 
+      if (!otpData.length || otpData[0].otp != otp) {
         await transaction.rollback();
         return res.status(400).json({
           success: false,
           message: "Invalid OTP",
         });
-      }  
+      }
+
       if (new Date(otpData[0].expires_at) < new Date()) {
         await transaction.rollback();
         return res.status(400).json({
@@ -104,6 +140,7 @@ export const sendOtp = async (req, res) => {
           message: "OTP expired",
         });
       }
+
       let users = await db.sequelize.query(
         `SELECT * FROM users WHERE mobile = :mobile LIMIT 1`,
         {
@@ -112,16 +149,19 @@ export const sendOtp = async (req, res) => {
           transaction,
         }
       );
+
       if (!users.length) {
-        const [insertId] = await db.sequelize.query(
+        const [insertResult] = await db.sequelize.query(
           `INSERT INTO users (mobile, is_verified, status, created_at, updated_at)
            VALUES (:mobile, 1, 1, NOW(), NOW())`,
           {
             replacements: { mobile: phone },
-            type: QueryTypes.INSERT,
             transaction,
           }
         );
+
+        const insertId = insertResult;
+
         users = await db.sequelize.query(
           `SELECT * FROM users WHERE id = :id LIMIT 1`,
           {
@@ -137,15 +177,17 @@ export const sendOtp = async (req, res) => {
         process.env.JWT_SECRET,
         { expiresIn: "7d" }
       );
+
       await db.sequelize.query(
         `DELETE FROM user_otps WHERE mobile = :mobile`,
         {
           replacements: { mobile: phone },
-          type: QueryTypes.DELETE,
           transaction,
         }
       );
+
       await transaction.commit();
+
       return res.json({
         success: true,
         role: "user",
@@ -153,10 +195,131 @@ export const sendOtp = async (req, res) => {
         user,
       });
     }
+
+    /* =========================================================
+       =============== DELIVERY BOY OTP SEND ===================
+       ========================================================= */
+    if (role === "delivery_boy" && phone && !otp) {
+
+      const deliveryBoys = await db.sequelize.query(
+        `SELECT * FROM delivery_boys 
+         WHERE mobile = :mobile 
+         AND status = 1
+         AND deleted_at IS NULL
+         LIMIT 1`,
+        {
+          replacements: { mobile: phone },
+          type: QueryTypes.SELECT,
+        }
+      );
+
+      if (!deliveryBoys.length) {
+        await transaction.rollback();
+        return res.status(404).json({
+          success: false,
+          message: "Delivery boy not found or inactive",
+        });
+      }
+
+      const generatedOtp = Math.floor(100000 + Math.random() * 900000);
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+
+      await db.sequelize.query(
+        `UPDATE delivery_boys 
+         SET otp = :otp, otp_expire_at = :expires_at 
+         WHERE id = :id`,
+        {
+          replacements: {
+            otp: generatedOtp,
+            expires_at: expiresAt,
+            id: deliveryBoys[0].id,
+          },
+          transaction,
+        }
+      );
+
+      await transaction.commit();
+
+      console.log("Delivery Boy OTP:", generatedOtp);
+
+      return res.json({
+        success: true,
+        role: "delivery_boy",
+        message: "OTP sent successfully",
+        otp: generatedOtp,
+      });
+    }
+
+    /* =========================================================
+       =============== DELIVERY BOY OTP VERIFY =================
+       ========================================================= */
+    if (role === "delivery_boy" && phone && otp) {
+
+      const deliveryBoys = await db.sequelize.query(
+        `SELECT * FROM delivery_boys
+         WHERE mobile = :mobile
+         AND otp = :otp
+         AND otp_expire_at > NOW()
+         AND status = 'active'
+         AND deleted_at IS NULL
+         LIMIT 1`,
+        {
+          replacements: { mobile: phone, otp },
+          type: QueryTypes.SELECT,
+          transaction,
+        }
+      );
+
+      if (!deliveryBoys.length) {
+        await transaction.rollback();
+        return res.status(400).json({
+          success: false,
+          message: "Invalid or expired OTP",
+        });
+      }
+
+      const deliveryBoy = deliveryBoys[0];
+
+      const token = jwt.sign(
+        { id: deliveryBoy.id, role: "delivery_boy" },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+
+      await db.sequelize.query(
+        `UPDATE delivery_boys
+         SET otp = NULL,
+             otp_expire_at = NULL,
+             auth_token = :token,
+             last_login_at = NOW()
+         WHERE id = :id`,
+        {
+          replacements: { token, id: deliveryBoy.id },
+          transaction,
+        }
+      );
+
+      await transaction.commit();
+
+      return res.json({
+        success: true,
+        role: "delivery_boy",
+        token,
+        delivery_boy: {
+          id: deliveryBoy.id,
+          name: deliveryBoy.name,
+          mobile: deliveryBoy.mobile,
+        },
+      });
+    }
+
+    await transaction.rollback();
+
     return res.status(400).json({
       success: false,
       message: "Invalid request data",
     });
+
   } catch (error) {
     await transaction.rollback();
     console.error("Login Error:", error);
@@ -167,7 +330,7 @@ export const sendOtp = async (req, res) => {
   }
 };
 /* VERIFY OTP */
-export const verifyOtp = async (req, res) => {
+export const verifyOtp1= async (req, res) => {
   const transaction = await db.sequelize.transaction();
   try {
     const { phone, otp } = req.body;
@@ -281,8 +444,206 @@ export const verifyOtp = async (req, res) => {
     return res.status(500).json({ success: false, message: "Internal server error", error: error.message });
   }
 };
+export const verifyOtp = async (req, res) => {
 
+  const transaction = await db.sequelize.transaction();
 
+  try {
+
+    let { phone, otp, role } = req.body;
+
+    if (!phone || !otp || !role) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: "Phone, OTP and role required"
+      });
+    }
+
+    const phoneStr = String(phone);
+    const otpStr = String(otp);
+    const roleType = String(role).trim().toLowerCase();
+
+    let user;
+    let token;
+
+    /* ======================================================
+       USER LOGIN
+    ====================================================== */
+
+    if (roleType === "user") {
+
+      // Check user exists
+      const users = await db.sequelize.query(
+        `SELECT u.id,u.name,u.email,u.mobile,u.is_verified,u.status,
+                up.gender,up.dob,up.height,up.weight,up.profile_image
+         FROM users u
+         LEFT JOIN user_profiles up ON u.id = up.user_id
+         WHERE u.mobile = :mobile
+         LIMIT 1`,
+        {
+          replacements: { mobile: phoneStr },
+          type: QueryTypes.SELECT,
+          transaction
+        }
+      );
+
+      if (!users.length) {
+        await transaction.rollback();
+        return res.status(404).json({
+          success: false,
+          message: "User not found"
+        });
+      }
+
+      user = users[0];
+
+      /* OTP CHECK (user_otps table) */
+
+      const otpRecord = await db.sequelize.query(
+        `SELECT * FROM user_otps
+         WHERE mobile = :mobile
+         AND otp = :otp
+         AND is_used = 0
+         ORDER BY id DESC
+         LIMIT 1`,
+        {
+          replacements: { mobile: phoneStr, otp: otpStr },
+          type: QueryTypes.SELECT,
+          transaction
+        }
+      );
+
+      if (!otpRecord.length) {
+        await transaction.rollback();
+        return res.status(400).json({
+          success: false,
+          message: "Invalid OTP"
+        });
+      }
+
+      const otpData = otpRecord[0];
+
+      token = jwt.sign(
+        { id: user.id, role: "user" },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+
+      await db.sequelize.query(
+        `UPDATE users
+         SET current_token = :token,
+             last_login = NOW(),
+             is_verified = 1
+         WHERE id = :id`,
+        {
+          replacements: { token, id: user.id },
+          transaction
+        }
+      );
+
+      // mark OTP used
+      await db.sequelize.query(
+        `UPDATE user_otps
+         SET is_used = 1
+         WHERE id = :otpId`,
+        {
+          replacements: { otpId: otpData.id },
+          transaction
+        }
+      );
+
+    }
+
+    /* ======================================================
+       DELIVERY BOY LOGIN
+    ====================================================== */
+
+    else if (roleType === "delivery_boy") {
+
+      const deliveryBoy = await db.sequelize.query(
+        `SELECT id,name,mobile,status,otp
+         FROM delivery_boys
+         WHERE mobile = :mobile
+         AND deleted_at IS NULL
+         LIMIT 1`,
+        {
+          replacements: { mobile: phoneStr },
+          type: QueryTypes.SELECT,
+          transaction
+        }
+      );
+
+      if (!deliveryBoy.length) {
+        await transaction.rollback();
+        return res.status(404).json({
+          success: false,
+          message: "Delivery boy not found"
+        });
+      }
+
+      user = deliveryBoy[0];
+
+      if (String(user.otp) !== otpStr) {
+        await transaction.rollback();
+        return res.status(400).json({
+          success: false,
+          message: "Invalid OTP"
+        });
+      }
+
+      token = jwt.sign(
+        { id: user.id, role: "delivery_boy" },
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+
+      await db.sequelize.query(
+        `UPDATE delivery_boys
+         SET auth_token = :token,
+             otp = NULL,
+             last_login_at = NOW()
+         WHERE id = :id`,
+        {
+          replacements: { token, id: user.id },
+          transaction
+        }
+      );
+
+    }
+
+    else {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: "Invalid role"
+      });
+    }
+
+    await transaction.commit();
+
+    return res.json({
+      success: true,
+      role: roleType,
+      token,
+      user
+    });
+
+  }
+
+  catch (error) {
+
+    await transaction.rollback();
+
+    console.error("Verify OTP Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+
+  }
+};
 /* LOGOUT */
 export const logout = async (req, res) => {
   try {
@@ -315,5 +676,5 @@ export const logout = async (req, res) => {
     });
   }
 };
-
+///////////////////////////////////////////////////
 

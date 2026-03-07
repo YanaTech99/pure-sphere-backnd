@@ -32,8 +32,6 @@ export const savePackageDestinations = async (
                     throw new Error("Destination already assigned to this package");
                 }
             }
-
-
             await sequelize.query(
                 `
        INSERT INTO package_destinations
