@@ -40,7 +40,7 @@ jobs:
             echo "📦 Installing dependencies"
             npm install --production
 
-            echo "🚀 Reloading PM2 process"
+            echo "🚀 Reloading PM2 process update"
             pm2 reload backend || pm2 start ecosystem.config.js --env dev
 
             echo "✅ Deployment completed successfully"
