@@ -9,9 +9,9 @@ export const sendOtp = async (req, res) => {
   const transaction = await db.sequelize.transaction();
 
   try {
-   const { phone, otp, password, role = "admin" } = req.body;
+    const { phone, otp, password, role = "admin" } = req.body;
 
-    
+
     if (!phone || !role) {
       await transaction.rollback();
       return res.status(400).json({
@@ -330,7 +330,7 @@ export const sendOtp = async (req, res) => {
   }
 };
 /* VERIFY OTP */
-export const verifyOtp1= async (req, res) => {
+export const verifyOtp1 = async (req, res) => {
   const transaction = await db.sequelize.transaction();
   try {
     const { phone, otp } = req.body;
@@ -489,14 +489,40 @@ export const verifyOtp = async (req, res) => {
       );
 
       if (!users.length) {
-        await transaction.rollback();
-        return res.status(404).json({
-          success: false,
-          message: "User not found"
-        });
-      }
 
-      user = users[0];
+        // Create new user
+        const newUserResult = await db.sequelize.query(
+          `INSERT INTO users (mobile, is_verified, created_at, updated_at)
+     VALUES (:mobile, 0, NOW(), NOW())`,
+          {
+            replacements: { mobile: phoneStr },
+            transaction
+          }
+        );
+
+        // Get inserted user ID (MySQL)
+        const userId = newUserResult[0];
+
+        // Fetch newly created user
+        const newUser = await db.sequelize.query(
+          `SELECT u.id,u.name,u.email,u.mobile,u.is_verified,u.status,
+            up.gender,up.dob,up.height,up.weight,up.profile_image
+            FROM users u
+            LEFT JOIN user_profiles up ON u.id = up.user_id
+            WHERE u.id = :id
+            LIMIT 1`,
+          {
+            replacements: { id: userId },
+            type: QueryTypes.SELECT,
+            transaction
+          }
+        );
+
+        user = newUser[0];
+      }
+      else {
+        user = users[0];
+      }
 
       /* OTP CHECK (user_otps table) */
 
