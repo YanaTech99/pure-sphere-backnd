@@ -2334,7 +2334,7 @@ export const deliveryboysadd = async (req, res) => {
 /////////////////////////////////////////
 export const deliveryboysList = async (req, res) => {
   try {
-    const BASE_URL = `${req.protocol}://${req.get("host")}/`;
+    const BASE_URL = `${req.protocol}://${req.get("host")}`;
     const { id, search = "" } = req.query;
     let whereCondition = `d.deleted_at IS NULL`;
     let replacements = {};
@@ -2405,7 +2405,7 @@ export const deliveryboysList = async (req, res) => {
 export const getdeliveryboyProfile = async (req, res) => {
   try {
     const deliveryBoyId = req.user.id;
-   const BASE_URL = `${req.protocol}://${req.get("host")}/`;
+   const BASE_URL = `${req.protocol}://${req.get("host")}`;
     const deliveryBoy = await db.sequelize.query(
       `SELECT db.*, 
               doc.profile_image,
