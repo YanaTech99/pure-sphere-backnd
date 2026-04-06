@@ -10,6 +10,10 @@ import pageRoutes from "./src/routes/page.routes.js";
 dotenv.config();
 
 const app = express();
+
+app.set('trust proxy', true); // 👈 ye line add karo
+
+
 /* ================= CORS ================= */
 app.use(cors({
   origin: "*",

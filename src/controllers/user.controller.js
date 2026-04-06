@@ -14,7 +14,8 @@ const razorpay = new Razorpay({
 /////////////////////////////////////////////
 export const dashboard = async (req, res) => {
   try {
-    const baseUrl = `${req.protocol}://${req.get("host")}/`;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const baseUrl = `${protocol}://${req.get("host")}/`;
     const userId = req.user.id;
     const { fcm_token } = req.body;
 
@@ -172,7 +173,8 @@ export const getProfile = async (req, res) => {
       });
     }
 
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const baseUrl = `${protocol}://${req.get("host")}/`;
      const baseUrl_plates = `${req.protocol}://${req.get("host")}/uploads/plates/`;
 
     const rows = await db.sequelize.query(
@@ -294,7 +296,8 @@ export const getProfile = async (req, res) => {
 // const DEFAULT_IMAGE = `data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5OjcBCgoKDQwNGg8PGjclHyU3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3N//AABEIAJQApQMBIgACEQEDEQH/...`;
 export const userlist = async (req, res) => {
   try {
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const baseUrl = `${protocol}://${req.get("host")}/`;
     const rows = await db.sequelize.query(
       `
       SELECT 
@@ -877,7 +880,8 @@ export const bannerslist = async (req, res) => {
       },
     });
     // 🔹 Base URL for image
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const baseUrl = `${protocol}://${req.get("host")}/`;
     banners.forEach(banner => {
       banner.image = banner.image
         ? `${baseUrl}/${banner.image}`
@@ -1039,7 +1043,8 @@ export const blogslist = async (req, res) => {
         message: "Blog not found",
       });
     }
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const baseUrl = `${protocol}://${req.get("host")}/`;
     const formattedBlogs = blogs.map((blog) => ({
       ...blog,
       image:
@@ -1179,7 +1184,9 @@ export const plateslist = async (req, res) => {
       type: QueryTypes.SELECT,
     });
 
-    const baseUrl = `${req.protocol}://${req.get("host")}/uploads/plates`;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const baseUrlFinal = `${protocol}://${req.get("host")}`;
+    const baseUrl = `${baseUrlFinal}/uploads/plates`;
 
     const formattedPlates = plates.map((plate) => ({
       ...plate,
@@ -1634,7 +1641,8 @@ export const healthprofilelist = async (req, res) => {
       }
     );
     // Base URL
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const baseUrl = `${protocol}://${req.get("host")}/`;
     const data = profiles.map((item) => ({
       ...item,
       file_url: item.files ? `${baseUrl}/${item.files}` : null,
@@ -2056,7 +2064,9 @@ export const mealshistory = async (req, res) => {
         message: "Unauthorized",
       });
     }
-    const baseUrl = `${req.protocol}://${req.get("host")}/uploads/daily_diets/`;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const baseUrlFinal = `${protocol}://${req.get("host")}`;
+    const baseUrl = `${baseUrlFinal}/uploads/daily_diets/`;
     const rows = await db.sequelize.query(
       `
       SELECT 
