@@ -79,7 +79,7 @@ export const updateProfile = async (req, res) => {
     }
     const { name, email, gender, dob, height, weight } = req.body;
     const profile_image = req.file
-      ? `/uploads/profile/${req.file.filename}`
+      ? `uploads/profile/${req.file.filename}`
       : undefined;
     /* ================= USERS TABLE ================= */
     const userFields = {};
@@ -174,8 +174,8 @@ export const getProfile = async (req, res) => {
     }
 
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-    const baseUrl = `${protocol}://${req.get("host")}/`;
-     const baseUrl_plates = `${req.protocol}://${req.get("host")}/uploads/plates/`;
+    const baseUrl = `${protocol}://${req.get("host")}`;
+    const baseUrl_plates = `${req.protocol}://${req.get("host")}/uploads/plates/`;
 
     const rows = await db.sequelize.query(
       `
@@ -255,28 +255,28 @@ export const getProfile = async (req, res) => {
 
       active_plan: r.user_plan_id
         ? {
-            id: r.user_plan_id,
-            plan_id: r.plan_id,
-            time_slot: r.time_slot,
-            start_date: r.start_date,
-            end_date: r.end_date,
-            status: r.user_plan_status,
-             plan_data: r.plan_data
-        ? JSON.parse(r.plan_data)
-        : null,
-            plate: r.plate_id
-              ? {
-                  id: r.plate_id,
-                  name: r.plate_name,
-                  description: r.plate_description,
-                  price_per_week: r.price_per_week,
-                  duration: r.duration,
-                  image: r.plate_image
-                    ? baseUrl_plates + r.plate_image
-                    : "https://lh3.googleusercontent.com/proxy/R9dXqanxVP2kpX9iSZxr3LsxIAfQhpkR6GbJW0EENe9zMmPYJUiuslNRReZJIT5n1wmExGlEEgh2v4T7i2gxgU505LP5XxTZmjpSQnjDvoDbzCPy6WXaZg7NJwssL7KT1DZ88VpIYdUcZnNmmw",
-                }
-              : null,
-          }
+          id: r.user_plan_id,
+          plan_id: r.plan_id,
+          time_slot: r.time_slot,
+          start_date: r.start_date,
+          end_date: r.end_date,
+          status: r.user_plan_status,
+          plan_data: r.plan_data
+            ? JSON.parse(r.plan_data)
+            : null,
+          plate: r.plate_id
+            ? {
+              id: r.plate_id,
+              name: r.plate_name,
+              description: r.plate_description,
+              price_per_week: r.price_per_week,
+              duration: r.duration,
+              image: r.plate_image
+                ? baseUrl_plates + r.plate_image
+                : "https://lh3.googleusercontent.com/proxy/R9dXqanxVP2kpX9iSZxr3LsxIAfQhpkR6GbJW0EENe9zMmPYJUiuslNRReZJIT5n1wmExGlEEgh2v4T7i2gxgU505LP5XxTZmjpSQnjDvoDbzCPy6WXaZg7NJwssL7KT1DZ88VpIYdUcZnNmmw",
+            }
+            : null,
+        }
         : null,
     };
     return res.json({
@@ -297,7 +297,7 @@ export const getProfile = async (req, res) => {
 export const userlist = async (req, res) => {
   try {
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-    const baseUrl = `${protocol}://${req.get("host")}/`;
+    const baseUrl = `${protocol}://${req.get("host")}`;
     const rows = await db.sequelize.query(
       `
       SELECT 
@@ -557,8 +557,8 @@ export const useraddressAdd = async (req, res) => {
     });
   }
 };
-export const useraddressList = async (req, res) => {  
- try {
+export const useraddressList = async (req, res) => {
+  try {
     const userId = req.user.id;
     const addresses = await db.sequelize.query(
       `  SELECT 
@@ -593,7 +593,7 @@ export const useraddressList = async (req, res) => {
 };
 ////////////////////////////////////
 export const plansadd = async (req, res) => {
-   try {
+  try {
     const {
       id,
       title,
@@ -683,7 +683,7 @@ export const plansadd = async (req, res) => {
   }
 };
 //////////////////////////
-export const planslist = async (req, res) => {  
+export const planslist = async (req, res) => {
   try {
     const plans = await db.sequelize.query(
       `
@@ -722,9 +722,9 @@ export const planslist = async (req, res) => {
   }
 };
 /////////////////////////////////////////
-export const plandetail = async (req, res) => {  
- try {
-    const { id } = req.params;  
+export const plandetail = async (req, res) => {
+  try {
+    const { id } = req.params;
     const plans = await db.sequelize.query(
       `
       SELECT 
@@ -742,7 +742,7 @@ export const plandetail = async (req, res) => {
       WHERE id = :id
       LIMIT 1
       `,
-      { 
+      {
         type: QueryTypes.SELECT,
         replacements: { id }
       }
@@ -881,7 +881,7 @@ export const bannerslist = async (req, res) => {
     });
     // 🔹 Base URL for image
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-    const baseUrl = `${protocol}://${req.get("host")}/`;
+    const baseUrl = `${protocol}://${req.get("host")}`;
     banners.forEach(banner => {
       banner.image = banner.image
         ? `${baseUrl}/${banner.image}`
@@ -1044,7 +1044,7 @@ export const blogslist = async (req, res) => {
       });
     }
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-    const baseUrl = `${protocol}://${req.get("host")}/`;
+    const baseUrl = `${protocol}://${req.get("host")}`;
     const formattedBlogs = blogs.map((blog) => ({
       ...blog,
       image:
@@ -1193,10 +1193,10 @@ export const plateslist = async (req, res) => {
       image: plate.image ? `${baseUrl}/${plate.image}` : null,
     }));
 
- 
+
     if (id && formattedPlates.length > 0) {
       const plateId = id;
-      const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+      const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
       const today = days[new Date().getDay()];
       const dailyDiets = await db.sequelize.query(
         `
@@ -1314,47 +1314,47 @@ export const dailydietsadd = async (req, res) => {
       }
     );
 
-  for (const plan of activePlans) {
+    for (const plan of activePlans) {
 
-  //  
-  const start = new Date(plan.start_date);
-  const end = new Date(plan.end_date);
+      //  
+      const start = new Date(plan.start_date);
+      const end = new Date(plan.end_date);
 
-  if (today < start || today > end) continue;
+      if (today < start || today > end) continue;
 
-  const existingOrder = await db.sequelize.query(
-    `SELECT id FROM orders
+      const existingOrder = await db.sequelize.query(
+        `SELECT id FROM orders
      WHERE user_plan_id = ?
      AND DATE(order_date) = ?`,
-    {
-      replacements: [plan.id, todayDate],
-      type: QueryTypes.SELECT,
-      transaction
-    }
-  );
-  if (!existingOrder.length) {
-    await db.sequelize.query(
-      `
+        {
+          replacements: [plan.id, todayDate],
+          type: QueryTypes.SELECT,
+          transaction
+        }
+      );
+      if (!existingOrder.length) {
+        await db.sequelize.query(
+          `
       INSERT INTO orders
       (user_plan_id, user_id, plate_id, daily_diet_id, order_date, time_slot, status, created_at)
       VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())
       `,
-      {
-        replacements: [
-          plan.id,
-          plan.user_id,
-          plate_id,
-          dailyDietId,
-          todayDate,
-          plan.time_slot
-        ],
-        type: QueryTypes.INSERT,
-        transaction
+          {
+            replacements: [
+              plan.id,
+              plan.user_id,
+              plate_id,
+              dailyDietId,
+              todayDate,
+              plan.time_slot
+            ],
+            type: QueryTypes.INSERT,
+            transaction
+          }
+        );
       }
-    );
-  }
-}
-  await transaction.commit(); 
+    }
+    await transaction.commit();
     return res.json({
       success: true,
       message: "Daily diet added and orders created successfully"
@@ -1382,7 +1382,7 @@ export const dailydietsadd_old = async (req, res) => {
     } = req.body;
     const image = req.file ? req.file.filename : null;
     // 🔹 Validation
-    if (!plate_id  || !meal_type || !item_name) {
+    if (!plate_id || !meal_type || !item_name) {
       return res.status(400).json({
         success: false,
         message: "plate_id, day_name, meal_type and item_name are required",
@@ -1642,10 +1642,12 @@ export const healthprofilelist = async (req, res) => {
     );
     // Base URL
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-    const baseUrl = `${protocol}://${req.get("host")}/`;
+    const baseUrl = `${protocol}://${req.get("host")}`;
     const data = profiles.map((item) => ({
       ...item,
-      file_url: item.files ? `${baseUrl}/${item.files}` : null,
+      file_url: item.files
+        ? `${baseUrl}/${item.files.replace(/\\/g, "/")}`
+        : null,
     }));
     return res.json({
       success: true,
@@ -1735,34 +1737,34 @@ export const gettransactions = async (req, res) => {
       user_mobile: r.user_mobile,
       plan: r.plan_id
         ? {
-            id: r.plan_id,
-            title: r.plan_title,
-            description: r.plan_description,
-            duration_days: r.duration_days,
-            price: r.plan_price,
-            category_id: r.category_id,
-            created_at: r.plan_created_at,
-            active_plan: r.user_plan_id
-              ? {
-                  id: r.user_plan_id,
-                  time_slot: r.time_slot,
-                  start_date: r.start_date,
-                  end_date: r.end_date,
-                  status: r.user_plan_status,
-                  created_at: r.user_plan_created_at,
-                }
-              : null,
-          }
+          id: r.plan_id,
+          title: r.plan_title,
+          description: r.plan_description,
+          duration_days: r.duration_days,
+          price: r.plan_price,
+          category_id: r.category_id,
+          created_at: r.plan_created_at,
+          active_plan: r.user_plan_id
+            ? {
+              id: r.user_plan_id,
+              time_slot: r.time_slot,
+              start_date: r.start_date,
+              end_date: r.end_date,
+              status: r.user_plan_status,
+              created_at: r.user_plan_created_at,
+            }
+            : null,
+        }
         : null,
       plate: r.plate_id
         ? {
-            id: r.plate_id,
-            name: r.plate_name,
-            description: r.plate_description,
-            price_per_week: r.price_per_week,
-            duration: r.duration,
-            image: r.image,
-          }
+          id: r.plate_id,
+          name: r.plate_name,
+          description: r.plate_description,
+          price_per_week: r.price_per_week,
+          duration: r.duration,
+          image: r.image,
+        }
         : null,
     }));
     return res.json({
@@ -1818,17 +1820,17 @@ export const verifyPayment = async (req, res) => {
     /* ======================================================
        2️⃣ CHECK IF TRANSACTION ALREADY EXISTS (IMPORTANT)
     ====================================================== */
-   const existingTransaction = await db.sequelize.query(
-  `SELECT transaction_id 
+    const existingTransaction = await db.sequelize.query(
+      `SELECT transaction_id 
    FROM payment_transactions
    WHERE transaction_reference = :razorpay_payment_id
    LIMIT 1`,
-  {
-    replacements: { razorpay_payment_id },
-    type: QueryTypes.SELECT,
-    transaction
-  }
-);
+      {
+        replacements: { razorpay_payment_id },
+        type: QueryTypes.SELECT,
+        transaction
+      }
+    );
 
     if (existingTransaction.length) {
       await transaction.commit();
@@ -2057,7 +2059,7 @@ export const orderplace = async (req, res) => {
 export const mealshistory = async (req, res) => {
   try {
     const userId = req.user?.id;
-    console.log("data get "+userId);
+    console.log("data get " + userId);
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -2105,16 +2107,16 @@ export const mealshistory = async (req, res) => {
       });
     }
     const meals = rows.map((r) => ({
-  diet_id: r.diet_id,
-  day_name: r.day_name,
-  meal_type: r.meal_type,
-  item_name: r.item_name,
-  description: r.description,
-  image: r.image ? baseUrl + r.image : null,
-  created_at: r.created_at
-    ? new Date(r.created_at).toISOString().split("T")[0]
-    : null,
-}));
+      diet_id: r.diet_id,
+      day_name: r.day_name,
+      meal_type: r.meal_type,
+      item_name: r.item_name,
+      description: r.description,
+      image: r.image ? baseUrl + r.image : null,
+      created_at: r.created_at
+        ? new Date(r.created_at).toISOString().split("T")[0]
+        : null,
+    }));
     return res.json({
       success: true,
       today: new Date().toISOString().split("T")[0],
@@ -2145,7 +2147,7 @@ export const deliveryboysadd = async (req, res) => {
       notes,
       license_number,
       id_number
-    } = req.body; 
+    } = req.body;
     // Files
     const profile_image = req.files?.profile_image?.[0]?.path || null;
     const vehicle_rc_image = req.files?.vehicle_rc_image?.[0]?.path || null;
@@ -2189,18 +2191,18 @@ export const deliveryboysadd = async (req, res) => {
           notes=?,
           updated_at=NOW()
         WHERE id=?
-      `,{
-        replacements:[
-          name,email,mobile,alternate_phone,
-          date_of_birth,gender,address,status,notes,id
+      `, {
+        replacements: [
+          name, email, mobile, alternate_phone,
+          date_of_birth, gender, address, status, notes, id
         ],
-        transaction:t
+        transaction: t
       });
       deliveryBoyId = id;
       const [docExist] = await db.sequelize.query(
         `SELECT id FROM delivery_boy_documents WHERE delivery_boy_id=? LIMIT 1`,
-        { replacements:[id], transaction:t }
-      );               
+        { replacements: [id], transaction: t }
+      );
       if (docExist.length) {
         await db.sequelize.query(`
           UPDATE delivery_boy_documents SET
@@ -2214,8 +2216,8 @@ export const deliveryboysadd = async (req, res) => {
             id_back_image = COALESCE(?, id_back_image),
             updated_at = NOW()
           WHERE delivery_boy_id = ?
-        `,{
-          replacements:[
+        `, {
+          replacements: [
             profile_image,
             vehicle_rc_image,
             license_number,
@@ -2226,7 +2228,7 @@ export const deliveryboysadd = async (req, res) => {
             id_back_image,
             id
           ],
-          transaction:t
+          transaction: t
         });
       } else {
         await db.sequelize.query(`
@@ -2243,8 +2245,8 @@ export const deliveryboysadd = async (req, res) => {
             id_back_image
           )
           VALUES (?,?,?,?,?,?,?,?,?)
-        `,{
-          replacements:[
+        `, {
+          replacements: [
             id,
             profile_image,
             vehicle_rc_image,
@@ -2255,7 +2257,7 @@ export const deliveryboysadd = async (req, res) => {
             id_front_image,
             id_back_image
           ],
-          transaction:t
+          transaction: t
         });
       }
       await t.commit();
@@ -2266,25 +2268,25 @@ export const deliveryboysadd = async (req, res) => {
     }
     const [mobileExist] = await db.sequelize.query(
       `SELECT id FROM delivery_boys WHERE mobile=? LIMIT 1`,
-      { replacements:[mobile], transaction:t }
+      { replacements: [mobile], transaction: t }
     );
     if (mobileExist.length) {
       await t.rollback();
       return res.status(400).json({
-        success:false,
-        message:"Mobile already exists"
+        success: false,
+        message: "Mobile already exists"
       });
     }
     const [insertResult] = await db.sequelize.query(`
       INSERT INTO delivery_boys
       (name,email,mobile,alternate_phone,date_of_birth,gender,address,status,notes,created_at,updated_at)
       VALUES (?,?,?,?,?,?,?,?,?,NOW(),NOW())
-    `,{
-      replacements:[
-        name,email,mobile,alternate_phone,
-        date_of_birth,gender,address,status,notes
+    `, {
+      replacements: [
+        name, email, mobile, alternate_phone,
+        date_of_birth, gender, address, status, notes
       ],
-      transaction:t
+      transaction: t
     });
     deliveryBoyId = insertResult;
     await db.sequelize.query(`
@@ -2301,8 +2303,8 @@ export const deliveryboysadd = async (req, res) => {
         id_back_image
       )
       VALUES (?,?,?,?,?,?,?,?,?)
-    `,{
-      replacements:[
+    `, {
+      replacements: [
         deliveryBoyId,
         profile_image,
         vehicle_rc_image,
@@ -2313,21 +2315,21 @@ export const deliveryboysadd = async (req, res) => {
         id_front_image,
         id_back_image
       ],
-      transaction:t
+      transaction: t
     });
 
     await t.commit();
 
     return res.status(201).json({
-      success:true,
-      message:"Delivery boy added successfully"
+      success: true,
+      message: "Delivery boy added successfully"
     });
 
   } catch (error) {
     await t.rollback();
     return res.status(500).json({
-      success:false,
-      message:error.message
+      success: false,
+      message: error.message
     });
   }
 };
@@ -2338,11 +2340,11 @@ export const deliveryboysList = async (req, res) => {
     const { id, search = "" } = req.query;
     let whereCondition = `d.deleted_at IS NULL`;
     let replacements = {};
-    
+
     if (id) {
       whereCondition += ` AND d.id = :id`;
       replacements.id = id;
-    } 
+    }
     else {
       whereCondition += `
         AND (
@@ -2405,7 +2407,7 @@ export const deliveryboysList = async (req, res) => {
 export const getdeliveryboyProfile = async (req, res) => {
   try {
     const deliveryBoyId = req.user.id;
-   const BASE_URL = `${req.protocol}://${req.get("host")}`;
+    const BASE_URL = `${req.protocol}://${req.get("host")}`;
     const deliveryBoy = await db.sequelize.query(
       `SELECT db.*, 
               doc.profile_image,
@@ -2435,12 +2437,12 @@ export const getdeliveryboyProfile = async (req, res) => {
     }
     const data = deliveryBoy[0];
     // ✅ Add full image path
-    data.profile_image = data.profile_image ? BASE_URL + data.profile_image : null;
-    data.vehicle_rc_image = data.vehicle_rc_image ? BASE_URL + data.vehicle_rc_image : null;
-    data.license_front_image = data.license_front_image ? BASE_URL + data.license_front_image : null;
-    data.license_back_image = data.license_back_image ? BASE_URL + data.license_back_image : null;
-    data.id_front_image = data.id_front_image ? BASE_URL + data.id_front_image : null;
-    data.id_back_image = data.id_back_image ? BASE_URL + data.id_back_image : null;
+    data.profile_image = data.profile_image ? BASE_URL + "/" + data.profile_image : null;
+    data.vehicle_rc_image = data.vehicle_rc_image ? BASE_URL + "/" + data.vehicle_rc_image : null;
+    data.license_front_image = data.license_front_image ? BASE_URL + "/" + data.license_front_image : null;
+    data.license_back_image = data.license_back_image ? BASE_URL + "/" + data.license_back_image : null;
+    data.id_front_image = data.id_front_image ? BASE_URL + "/" + data.id_front_image : null;
+    data.id_back_image = data.id_back_image ? BASE_URL + "/" + data.id_back_image : null;
     return res.json({
       success: true,
       delivery_boy: data
@@ -2746,8 +2748,8 @@ export const dashboardapp = async (req, res) => {
     );
 
     // Today Orders List
-   const todayOrders = await db.sequelize.query(
-`
+    const todayOrders = await db.sequelize.query(
+      `
 SELECT 
   o.id,
   o.order_date,
@@ -2797,14 +2799,14 @@ WHERE
 
 ORDER BY o.id DESC
 `,
-{
-  replacements: {
-    delivery_boy_id,
-    BASE_URL
-  },
-  type: QueryTypes.SELECT
-}
-);
+      {
+        replacements: {
+          delivery_boy_id,
+          BASE_URL
+        },
+        type: QueryTypes.SELECT
+      }
+    );
 
     return res.json({
       success: true,
