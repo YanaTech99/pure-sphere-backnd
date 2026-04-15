@@ -2387,12 +2387,12 @@ export const deliveryboysList = async (req, res) => {
     // Add Base URL to image paths
     const data = rows.map(item => ({
       ...item,
-      profile_image: item.profile_image ? BASE_URL + item.profile_image : null,
-      vehicle_rc_image: item.vehicle_rc_image ? BASE_URL + item.vehicle_rc_image : null,
-      license_front_image: item.license_front_image ? BASE_URL + item.license_front_image : null,
-      license_back_image: item.license_back_image ? BASE_URL + item.license_back_image : null,
-      id_front_image: item.id_front_image ? BASE_URL + item.id_front_image : null,
-      id_back_image: item.id_back_image ? BASE_URL + item.id_back_image : null,
+      profile_image: item.profile_image ? BASE_URL + "/" + item.profile_image : null,
+      vehicle_rc_image: item.vehicle_rc_image ? BASE_URL + "/" + item.vehicle_rc_image : null,
+      license_front_image: item.license_front_image ? BASE_URL + "/" + item.license_front_image : null,
+      license_back_image: item.license_back_image ? BASE_URL + "/" + item.license_back_image : null,
+      id_front_image: item.id_front_image ? BASE_URL + "/" + item.id_front_image : null,
+      id_back_image: item.id_back_image ? BASE_URL + "/" + item.id_back_image : null,
     }));
     res.json({
       success: true,
