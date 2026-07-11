@@ -162,6 +162,7 @@ export const updateProfile = async (req, res) => {
     });
   }
 };
+///
 export const getProfile = async (req, res) => {
   try {
     const userId = req.user?.id;
@@ -177,21 +178,32 @@ export const getProfile = async (req, res) => {
     const baseUrl = `${protocol}://${req.get("host")}`;
     const baseUrl_plates = `${req.protocol}://${req.get("host")}/uploads/plates/`;
 
-    const rows = await db.sequelize.query(
+    // 1️⃣ Basic user info
+    const userRows = await db.sequelize.query(
       `
       SELECT 
-        u.id,
-        u.name,
-        u.mobile,
-        u.email,
+        u.id, u.name, u.mobile, u.email,
+        upf.gender, upf.dob, upf.height, upf.weight, upf.profile_image
+      FROM users u
+      LEFT JOIN user_profiles upf ON u.id = upf.user_id
+      WHERE u.id = :user_id
+      LIMIT 1
+      `,
+      { replacements: { user_id: userId }, type: QueryTypes.SELECT }
+    );
 
-        upf.gender,
-        upf.dob,
-        upf.height,
-        upf.weight,
-        upf.profile_image,
+    if (!userRows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+    const r = userRows[0];
 
-        -- ACTIVE USER PLAN
+    // 2️⃣ ALL active plans (status = 1), not just MAX(id)
+    const planRows = await db.sequelize.query(
+      `
+      SELECT 
         up.id AS user_plan_id,
         up.plan_id,
         up.plan_data,
@@ -200,7 +212,6 @@ export const getProfile = async (req, res) => {
         up.end_date,
         up.status AS user_plan_status,
 
-        -- PLATE DATA
         pl.id AS plate_id,
         pl.name AS plate_name,
         pl.description AS plate_description,
@@ -208,38 +219,38 @@ export const getProfile = async (req, res) => {
         pl.duration,
         pl.image AS plate_image
 
-      FROM users u
-      LEFT JOIN user_profiles upf ON u.id = upf.user_id
-
-      -- Latest Active Plan
-      LEFT JOIN user_plans up 
-        ON up.id = (
-          SELECT MAX(id)
-          FROM user_plans
-          WHERE user_id = u.id
-          AND status = 1
-        )
-
-      -- Plate from plan_data->category_id
+      FROM user_plans up
       LEFT JOIN plates pl 
         ON pl.id = JSON_UNQUOTE(JSON_EXTRACT(up.plan_data, '$.category_id'))
-
-      WHERE u.id = :user_id
-      LIMIT 1
+      WHERE up.user_id = :user_id
+        AND up.status = 1
+      ORDER BY up.id DESC
       `,
-      {
-        replacements: { user_id: userId },
-        type: QueryTypes.SELECT,
-      }
+      { replacements: { user_id: userId }, type: QueryTypes.SELECT }
     );
 
-    if (!rows.length) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-    const r = rows[0];
+    const active_plans = planRows.map((row) => ({
+      id: row.user_plan_id,
+      plan_id: row.plan_id,
+      time_slot: row.time_slot,
+      start_date: row.start_date,
+      end_date: row.end_date,
+      status: row.user_plan_status,
+      plan_data: row.plan_data ? JSON.parse(row.plan_data) : null,
+      plate: row.plate_id
+        ? {
+          id: row.plate_id,
+          name: row.plate_name,
+          description: row.plate_description,
+          price_per_week: row.price_per_week,
+          duration: row.duration,
+          image: row.plate_image
+            ? baseUrl_plates + row.plate_image
+            : "https://lh3.googleusercontent.com/proxy/R9dXqanxVP2kpX9iSZxr3LsxIAfQhpkR6GbJW0EENe9zMmPYJUiuslNRReZJIT5n1wmExGlEEgh2v4T7i2gxgU505LP5XxTZmjpSQnjDvoDbzCPy6WXaZg7NJwssL7KT1DZ88VpIYdUcZnNmmw",
+        }
+        : null,
+    }));
+
     const user = {
       id: r.id,
       name: r.name,
@@ -253,32 +264,10 @@ export const getProfile = async (req, res) => {
         ? baseUrl + r.profile_image
         : "https://lh3.googleusercontent.com/proxy/R9dXqanxVP2kpX9iSZxr3LsxIAfQhpkR6GbJW0EENe9zMmPYJUiuslNRReZJIT5n1wmExGlEEgh2v4T7i2gxgU505LP5XxTZmjpSQnjDvoDbzCPy6WXaZg7NJwssL7KT1DZ88VpIYdUcZnNmmw",
 
-      active_plan: r.user_plan_id
-        ? {
-          id: r.user_plan_id,
-          plan_id: r.plan_id,
-          time_slot: r.time_slot,
-          start_date: r.start_date,
-          end_date: r.end_date,
-          status: r.user_plan_status,
-          plan_data: r.plan_data
-            ? JSON.parse(r.plan_data)
-            : null,
-          plate: r.plate_id
-            ? {
-              id: r.plate_id,
-              name: r.plate_name,
-              description: r.plate_description,
-              price_per_week: r.price_per_week,
-              duration: r.duration,
-              image: r.plate_image
-                ? baseUrl_plates + r.plate_image
-                : "https://lh3.googleusercontent.com/proxy/R9dXqanxVP2kpX9iSZxr3LsxIAfQhpkR6GbJW0EENe9zMmPYJUiuslNRReZJIT5n1wmExGlEEgh2v4T7i2gxgU505LP5XxTZmjpSQnjDvoDbzCPy6WXaZg7NJwssL7KT1DZ88VpIYdUcZnNmmw",
-            }
-            : null,
-        }
-        : null,
+      // ✅ ab array aayega, dono active plans ke saath
+      active_plans: active_plans,
     };
+
     return res.json({
       success: true,
       data: user,
@@ -324,7 +313,8 @@ export const userlist = async (req, res) => {
           hp.id AS health_id,
           hp.files AS health_file,
           DATE_FORMAT(hp.created_at, '%Y-%m-%d %H:%i:%s') AS health_created_at, 
-          -- Latest User Plan
+
+          -- ALL User Plans (not just latest)
           upn.id AS user_plan_id,
           upn.transaction_id,
           upn.plan_id,
@@ -358,18 +348,15 @@ export const userlist = async (req, res) => {
       LEFT JOIN user_addresses ua ON ua.user_id = u.id
       LEFT JOIN health_profiles hp ON hp.user_id = u.id
 
+      -- ✅ ab saare active plans join honge, sirf MAX(id) wala nahi
       LEFT JOIN user_plans upn 
-          ON upn.user_id = u.id 
-          AND upn.id = (
-              SELECT MAX(id) 
-              FROM user_plans 
-              WHERE user_id = u.id
-          )
+          ON upn.user_id = u.id
+          AND upn.status = 1
 
       LEFT JOIN plans p ON p.id = upn.plan_id
       LEFT JOIN plates pl ON pl.id = p.category_id
 
-      ORDER BY u.id DESC
+      ORDER BY u.id DESC, upn.id DESC
       `,
       {
         type: QueryTypes.SELECT
@@ -401,7 +388,7 @@ export const userlist = async (req, res) => {
 
           address: null,
           health_profiles: [],
-          user_plan: null
+          user_plans: []   // ✅ ab array
         };
       }
 
@@ -421,51 +408,60 @@ export const userlist = async (req, res) => {
 
       // Health Profiles
       if (row.health_id) {
-        usersMap[row.user_id].health_profiles.push({
-          id: row.health_id,
-          file: row.health_file
-            ? `${baseUrl}/${row.health_file}`
-            : null,
-          created_at: row.health_created_at
-        });
+        const alreadyAdded = usersMap[row.user_id].health_profiles.some(
+          (h) => h.id === row.health_id
+        );
+        if (!alreadyAdded) {
+          usersMap[row.user_id].health_profiles.push({
+            id: row.health_id,
+            file: row.health_file
+              ? `${baseUrl}/${row.health_file}`
+              : null,
+            created_at: row.health_created_at
+          });
+        }
       }
 
-      // User Plan + Plan + Plate (Single Object)
-      if (row.user_plan_id && !usersMap[row.user_id].user_plan) {
+      // ✅ User Plan + Plan + Plate (Array — duplicate check via user_plan_id)
+      if (row.user_plan_id) {
+        const alreadyExists = usersMap[row.user_id].user_plans.some(
+          (pl) => pl.id === row.user_plan_id
+        );
 
-        usersMap[row.user_id].user_plan = {
-          id: row.user_plan_id,
-          transaction_id: row.transaction_id,
-          time_slot: row.time_slot,
-          start_date: row.start_date,
-          end_date: row.end_date,
-          status: row.user_plan_status,
-          created_at: row.user_plan_created_at,
-          plan_data: row.plan_data ? JSON.parse(row.plan_data) : null,
+        if (!alreadyExists) {
+          usersMap[row.user_id].user_plans.push({
+            id: row.user_plan_id,
+            transaction_id: row.transaction_id,
+            time_slot: row.time_slot,
+            start_date: row.start_date,
+            end_date: row.end_date,
+            status: row.user_plan_status,
+            created_at: row.user_plan_created_at,
+            plan_data: row.plan_data ? JSON.parse(row.plan_data) : null,
 
-          plan: row.plan_main_id ? {
-            id: row.plan_main_id,
-            title: row.plan_title,
-            description: row.plan_description,
-            duration_days: row.duration_days,
-            price: row.plan_price,
-            category_id: row.category_id,
-            status: row.plan_status
-          } : null,
+            plan: row.plan_main_id ? {
+              id: row.plan_main_id,
+              title: row.plan_title,
+              description: row.plan_description,
+              duration_days: row.duration_days,
+              price: row.plan_price,
+              category_id: row.category_id,
+              status: row.plan_status
+            } : null,
 
-          plate: row.plate_id ? {
-            id: row.plate_id,
-            name: row.plate_name,
-            description: row.plate_description,
-            price_per_week: row.price_per_week,
-            duration: row.plate_duration,
-            status: row.plate_status,
-            image: row.plate_image
-              ? `${baseUrl}/${row.plate_image}`
-              : null
-          } : null
-        };
-
+            plate: row.plate_id ? {
+              id: row.plate_id,
+              name: row.plate_name,
+              description: row.plate_description,
+              price_per_week: row.price_per_week,
+              duration: row.plate_duration,
+              status: row.plate_status,
+              image: row.plate_image
+                ? `${baseUrl}/${row.plate_image}`
+                : null
+            } : null
+          });
+        }
       }
     }
 
