@@ -872,7 +872,7 @@ export const bannerslist = async (req, res) => {
         created_at,
         updated_at
       FROM banners
-      WHERE 1=1
+      WHERE status=1
     `;
     // 🔹 Filter by id
     if (id) {
