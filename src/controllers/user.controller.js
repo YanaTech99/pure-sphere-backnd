@@ -685,8 +685,9 @@ export const plansadd = async (req, res) => {
 //////////////////////////
 export const planslist = async (req, res) => {
   try {
-    const plans = await db.sequelize.query(
-      `
+    const { category_id } = req.query;
+
+    let query = `
       SELECT 
         p.id, 
         p.title,
@@ -701,12 +702,21 @@ export const planslist = async (req, res) => {
         p.updated_at
       FROM plans p
       LEFT JOIN plates pl ON p.category_id = pl.id
-      ORDER BY p.id DESC
-      `,
-      {
-        type: QueryTypes.SELECT
-      }
-    );
+    `;
+
+    const replacements = {};
+
+    if (category_id) {
+      query += ` WHERE p.category_id = :category_id`;
+      replacements.category_id = category_id;
+    }
+
+    query += ` ORDER BY p.id DESC`;
+
+    const plans = await db.sequelize.query(query, {
+      replacements,
+      type: QueryTypes.SELECT
+    });
 
     return res.json({
       success: true,
@@ -721,6 +731,7 @@ export const planslist = async (req, res) => {
     });
   }
 };
+
 /////////////////////////////////////////
 export const plandetail = async (req, res) => {
   try {
