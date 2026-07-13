@@ -1178,6 +1178,7 @@ export const plateslist = async (req, res) => {
         created_at,
         updated_at
       FROM plates
+      WHERE status = 1
     `;
 
     if (id) {
@@ -2571,7 +2572,7 @@ export const orderslist = async (req, res) => {
         o.delivery_boy_id,
         o.start_time,
         o.end_time,
-
+        o.capture_selfie,
         u.name AS user_name,
         u.mobile AS user_mobile,
 
