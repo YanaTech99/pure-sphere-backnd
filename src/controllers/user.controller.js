@@ -1309,15 +1309,8 @@ export const dailydietsadd = async (req, res) => {
     const todayDate = today.toISOString().split("T")[0];
 
     // Get active user plans
-    const activePlans = await db.sequelize.query(
-      `
-  SELECT up.id, up.user_id, up.plan_data, up.start_date, up.end_date, up.time_slot
-  FROM user_plans up
-  INNER JOIN plans p ON up.plan_id = p.id
-  WHERE up.status = 1
-    AND p.category_id = :plate_id
-    AND (p.plan_type = :meal_type OR p.plan_type = 'both')
-  `,
+    const activePlans = await db.sequelize.query(`SELECT up.id, up.user_id, up.plan_data, up.start_date, up.end_date, up.time_slot, p.plan_type FROM user_plans up
+    INNER JOIN plans p ON up.plan_id = p.id WHERE up.status = 1 AND p.category_id = :plate_id AND (p.plan_type = :meal_type OR p.plan_type = 'both')`,
       {
         replacements: { plate_id, meal_type: meal_type.toLowerCase() },
         type: QueryTypes.SELECT,
@@ -1327,7 +1320,6 @@ export const dailydietsadd = async (req, res) => {
 
     for (const plan of activePlans) {
 
-      //  
       const start = new Date(plan.start_date);
       const end = new Date(plan.end_date);
 
@@ -1344,6 +1336,14 @@ export const dailydietsadd = async (req, res) => {
         }
       );
       if (!existingOrder.length) {
+
+        let orderTimeSlot = plan.time_slot;
+
+        if (plan.plan_type === 'both' && plan.time_slot.includes(',')) {
+          const slots = plan.time_slot.split(',').map(s => s.trim());
+          orderTimeSlot = meal_type.toLowerCase() === 'lunch' ? slots[0] : slots[1];
+        }
+
         await db.sequelize.query(
           `
       INSERT INTO orders
@@ -1357,7 +1357,8 @@ export const dailydietsadd = async (req, res) => {
               plate_id,
               dailyDietId,
               todayDate,
-              plan.time_slot
+              orderTimeSlot,
+              meal_type
             ],
             type: QueryTypes.INSERT,
             transaction
