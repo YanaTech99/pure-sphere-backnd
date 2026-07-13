@@ -2739,13 +2739,24 @@ export const updateDeliveryStatus = async (req, res) => {
 ////////////////////////////////
 export const dashboardapp = async (req, res) => {
   try {
-    const { delivery_boy_id } = req.query;
+    const { delivery_boy_id, fcm_token } = req.body;
 
     if (!delivery_boy_id) {
       return res.status(400).json({
         success: false,
         message: "delivery_boy_id is required"
       });
+    }
+
+    // fcm_token aaya hai to update kar do
+    if (fcm_token) {
+      await db.sequelize.query(
+        `UPDATE delivery_boys SET device_token = :fcm_token WHERE id = :delivery_boy_id`,
+        {
+          replacements: { fcm_token, delivery_boy_id },
+          type: QueryTypes.UPDATE
+        }
+      );
     }
 
     const BASE_URL = `${req.protocol}://${req.get("host")}`;
