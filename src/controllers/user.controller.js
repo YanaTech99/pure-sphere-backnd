@@ -2681,8 +2681,8 @@ export const updateDeliveryStatus = async (req, res) => {
         WHERE id = ?
       `;
       replacements = [start_time, order_id];
-      notifTitle = "Out for Delivery";                          // 👈 NAYA
-      notifBody = "Aapka order delivery ke liye nikal gaya hai"; // 👈 NAYA
+      notifTitle = "Out for Delivery";                         
+      notifBody = "Your order is on its way! It will be delivered to you shortly.";
     }
     // 📦 Complete Delivery
     else if (action === "complete") {
@@ -2702,8 +2702,8 @@ export const updateDeliveryStatus = async (req, res) => {
         WHERE id = ?
       `;
       replacements = [end_time, capture_selfie, order_id];
-      notifTitle = "Order Delivered";                              // 👈 NAYA
-      notifBody = "Aapka order successfully deliver ho gaya hai";   // 👈 NAYA
+      notifTitle = "Order Delivered";                         
+      notifBody = "Your order has been delivered successfully. We hope you enjoy your purchase!";
     }
     else {
       return res.status(400).json({
