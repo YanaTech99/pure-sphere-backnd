@@ -27,7 +27,7 @@ router.get("/deliveryboyProfile", authMiddleware, getdeliveryboyProfile);
 router.post("/order-place", authMiddleware, orderplace);
 router.post("/createOrder",  createOrder);
 router.get("/orderslist", orderslist);
-router.get("/dashboardapp", dashboardapp);
+router.post("/dashboardapp", dashboardapp);
 router.post("/dashboard", authMiddleware, dashboard);
 router.post(
   "/update-delivery-status",
