@@ -281,8 +281,6 @@ export const getProfile = async (req, res) => {
     });
   }
 };
-//////////////////////////////////
-// const DEFAULT_IMAGE = `data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5OjcBCgoKDQwNGg8PGjclHyU3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3N//AABEIAJQApQMBIgACEQEDEQH/...`;
 export const userlist = async (req, res) => {
   try {
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
@@ -2644,8 +2642,10 @@ export const updateDeliveryStatus = async (req, res) => {
       });
     }
     console.log("Update Delivery Status Body:", req.body);
+
+    // 👈 CHANGE: user_id bhi select kiya
     const order = await db.sequelize.query(
-      `SELECT id FROM orders WHERE id = ?`,
+      `SELECT id, user_id FROM orders WHERE id = ?`,
       {
         replacements: [order_id],
         type: QueryTypes.SELECT
@@ -2657,8 +2657,13 @@ export const updateDeliveryStatus = async (req, res) => {
         message: "Order not found"
       });
     }
+
+    const userId = order[0].user_id;   // 👈 NAYA
     let query = "";
     let replacements = [];
+    let notifTitle = "";                // 👈 NAYA
+    let notifBody = "";                 // 👈 NAYA
+
     // 🚚 Start Delivery
     if (action === "start") {
       if (!start_time) {
@@ -2675,6 +2680,8 @@ export const updateDeliveryStatus = async (req, res) => {
         WHERE id = ?
       `;
       replacements = [start_time, order_id];
+      notifTitle = "Out for Delivery";                          // 👈 NAYA
+      notifBody = "Aapka order delivery ke liye nikal gaya hai"; // 👈 NAYA
     }
     // 📦 Complete Delivery
     else if (action === "complete") {
@@ -2694,6 +2701,8 @@ export const updateDeliveryStatus = async (req, res) => {
         WHERE id = ?
       `;
       replacements = [end_time, capture_selfie, order_id];
+      notifTitle = "Order Delivered";                              // 👈 NAYA
+      notifBody = "Aapka order successfully deliver ho gaya hai";   // 👈 NAYA
     }
     else {
       return res.status(400).json({
@@ -2701,10 +2710,19 @@ export const updateDeliveryStatus = async (req, res) => {
         message: "Invalid action"
       });
     }
+
     await db.sequelize.query(query, {
       replacements,
       type: QueryTypes.UPDATE
     });
+
+    // 👇 NAYA — Notification bhejo
+    await notifyUser(userId, notifTitle, notifBody, {
+      type: "order_status_changed",
+      order_id,
+      status: action === "start" ? "out_for_delivery" : "delivered"
+    });
+
     return res.json({
       success: true,
       message: "Order updated successfully",

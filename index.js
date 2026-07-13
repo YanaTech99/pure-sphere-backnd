@@ -1,39 +1,39 @@
 import express from "express";
-import bodyParser from "body-parser";
-import admin from "firebase-admin";
 import dotenv from "dotenv";
+import "./config/firebase.js"; // sirf initialize karne ke liye import
+import { sendToDevice } from "./services/notificationService.js";
 
 dotenv.config();
 
-admin.initializeApp({
-  credential: admin.credential.cert({
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-  }),
-});
-
 const app = express();
-app.use(bodyParser.json());
+app.use(express.json()); // body-parser ki zarurat nahi
 
 app.post("/send-notification", async (req, res) => {
   const { token, title, body } = req.body;
 
-  const message = {
-    notification: {
-      title,
-      body,
-    },
-    token,
-  };
-
-  try {
-    const response = await admin.messaging().send(message);
-    res.json({ success: true, response });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, error: error.message });
+  if (!token || !title || !body) {
+    return res.status(400).json({
+      success: false,
+      error: "token, title, aur body required hain",
+    });
   }
+
+  const result = await sendToDevice(token, title, body);
+
+  if (!result.success) {
+    if (
+      result.code === "messaging/invalid-registration-token" ||
+      result.code === "messaging/registration-token-not-registered"
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid ya expired token — device se naya token lo",
+      });
+    }
+    return res.status(500).json(result);
+  }
+
+  res.json(result);
 });
 
 app.listen(3000, () => {
