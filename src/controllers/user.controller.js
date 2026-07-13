@@ -1311,11 +1311,15 @@ export const dailydietsadd = async (req, res) => {
     // Get active user plans
     const activePlans = await db.sequelize.query(
       `
-      SELECT id, user_id, plan_data, start_date, end_date, time_slot
-      FROM user_plans
-      WHERE status = 1
-      `,
+  SELECT up.id, up.user_id, up.plan_data, up.start_date, up.end_date, up.time_slot
+  FROM user_plans up
+  INNER JOIN plans p ON up.plan_id = p.id
+  WHERE up.status = 1
+    AND p.category_id = :plate_id
+    AND (p.plan_type = :meal_type OR p.plan_type = 'both')
+  `,
       {
+        replacements: { plate_id, meal_type: meal_type.toLowerCase() },
         type: QueryTypes.SELECT,
         transaction
       }
@@ -1376,6 +1380,7 @@ export const dailydietsadd = async (req, res) => {
     });
   }
 };
+
 export const dailydietsadd_old = async (req, res) => {
   try {
     const {
