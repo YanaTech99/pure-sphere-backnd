@@ -6,7 +6,6 @@ import Razorpay from "razorpay";
 import { notifyUser } from "../services/notificationService.js";
 
 
-
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET,
@@ -2643,10 +2642,13 @@ export const updateDeliveryStatus = async (req, res) => {
       });
     }
     console.log("Update Delivery Status Body:", req.body);
-
-    // 👈 CHANGE: user_id bhi select kiya
+ 
+    // 👈 CHANGE: user_id, mobile, name bhi select kiya (WhatsApp bhejne ke liye)
     const order = await db.sequelize.query(
-      `SELECT id, user_id FROM orders WHERE id = ?`,
+      `SELECT o.id, o.user_id, u.mobile, u.name
+       FROM orders o
+       LEFT JOIN users u ON u.id = o.user_id
+       WHERE o.id = ?`,
       {
         replacements: [order_id],
         type: QueryTypes.SELECT
@@ -2658,13 +2660,15 @@ export const updateDeliveryStatus = async (req, res) => {
         message: "Order not found"
       });
     }
-
+ 
     const userId = order[0].user_id;   // 👈 NAYA
+    const userMobile = order[0].mobile;  // 👈 NAYA
+    const userName = order[0].name || "Customer";  // 👈 NAYA
     let query = "";
     let replacements = [];
     let notifTitle = "";                // 👈 NAYA
     let notifBody = "";                 // 👈 NAYA
-
+ 
     // 🚚 Start Delivery
     if (action === "start") {
       if (!start_time) {
@@ -2711,19 +2715,31 @@ export const updateDeliveryStatus = async (req, res) => {
         message: "Invalid action"
       });
     }
-
+ 
     await db.sequelize.query(query, {
       replacements,
       type: QueryTypes.UPDATE
     });
-
+ 
     // 👇 NAYA — Notification bhejo
     await notifyUser(userId, notifTitle, notifBody, {
       type: "order_status_changed",
       order_id,
       status: action === "start" ? "out_for_delivery" : "delivered"
     });
-
+ 
+    // 👇 NAYA — WhatsApp bhejo (fire-and-forget, response block nahi hoga)
+    if (userMobile) {
+      sendWhatsappOrderUpdate(
+        userMobile,
+        userName,
+        order_id,
+        action === "start" ? "out_for_delivery" : "delivered"
+      ).catch((err) =>
+        console.error("WhatsApp order update send failed:", err.message)
+      );
+    }
+ 
     return res.json({
       success: true,
       message: "Order updated successfully",
