@@ -261,7 +261,7 @@ export const getProfile = async (req, res) => {
       height: r.height,
       weight: r.weight,
       profile_image: r.profile_image
-        ? baseUrl + r.profile_image
+        ? `${baseUrl}/${r.profile_image}`
         : "https://lh3.googleusercontent.com/proxy/R9dXqanxVP2kpX9iSZxr3LsxIAfQhpkR6GbJW0EENe9zMmPYJUiuslNRReZJIT5n1wmExGlEEgh2v4T7i2gxgU505LP5XxTZmjpSQnjDvoDbzCPy6WXaZg7NJwssL7KT1DZ88VpIYdUcZnNmmw",
 
       // ✅ ab array aayega, dono active plans ke saath
@@ -376,7 +376,7 @@ export const userlist = async (req, res) => {
           updated_at: row.updated_at,
 
           profile_image: row.profile_image
-            ? `${baseUrl}${row.profile_image}`
+            ? `${baseUrl}/${row.profile_image}`
             : `${baseUrl}/uploads/Default.jpg`,
 
           gender: row.gender,
