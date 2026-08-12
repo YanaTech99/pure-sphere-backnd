@@ -79,7 +79,7 @@ export const updateProfile = async (req, res) => {
     }
     const { name, email, gender, dob, height, weight } = req.body;
     const profile_image = req.file
-      ? `uploads/profile/${req.file.filename}`
+      ? `/uploads/profile/${req.file.filename}`
       : undefined;
     /* ================= USERS TABLE ================= */
     const userFields = {};
