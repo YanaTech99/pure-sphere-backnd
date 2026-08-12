@@ -47,7 +47,7 @@ export const sendOtp = async (req, res) => {
 
       const admin = admins[0];
       const match = await bcrypt.compare(password, admin.password);
-
+  
       if (!match) {
         await transaction.rollback();
         return res.status(401).json({

@@ -1180,7 +1180,7 @@ export const plateslist = async (req, res) => {
     `;
 
     if (id) {
-      query += ` WHERE id = :id `;
+      query += ` AND id = :id `;
     }
 
     query += ` ORDER BY id DESC`;
@@ -2642,7 +2642,7 @@ export const updateDeliveryStatus = async (req, res) => {
       });
     }
     console.log("Update Delivery Status Body:", req.body);
- 
+
     // 👈 CHANGE: user_id, mobile, name bhi select kiya (WhatsApp bhejne ke liye)
     const order = await db.sequelize.query(
       `SELECT o.id, o.user_id, u.mobile, u.name
@@ -2660,7 +2660,7 @@ export const updateDeliveryStatus = async (req, res) => {
         message: "Order not found"
       });
     }
- 
+
     const userId = order[0].user_id;   // 👈 NAYA
     const userMobile = order[0].mobile;  // 👈 NAYA
     const userName = order[0].name || "Customer";  // 👈 NAYA
@@ -2668,7 +2668,7 @@ export const updateDeliveryStatus = async (req, res) => {
     let replacements = [];
     let notifTitle = "";                // 👈 NAYA
     let notifBody = "";                 // 👈 NAYA
- 
+
     // 🚚 Start Delivery
     if (action === "start") {
       if (!start_time) {
@@ -2685,7 +2685,7 @@ export const updateDeliveryStatus = async (req, res) => {
         WHERE id = ?
       `;
       replacements = [start_time, order_id];
-      notifTitle = "Out for Delivery";                         
+      notifTitle = "Out for Delivery";
       notifBody = "Your order is on its way! It will be delivered to you shortly.";
     }
     // 📦 Complete Delivery
@@ -2706,7 +2706,7 @@ export const updateDeliveryStatus = async (req, res) => {
         WHERE id = ?
       `;
       replacements = [end_time, capture_selfie, order_id];
-      notifTitle = "Order Delivered";                         
+      notifTitle = "Order Delivered";
       notifBody = "Your order has been delivered successfully. We hope you enjoy your purchase!";
     }
     else {
@@ -2715,19 +2715,19 @@ export const updateDeliveryStatus = async (req, res) => {
         message: "Invalid action"
       });
     }
- 
+
     await db.sequelize.query(query, {
       replacements,
       type: QueryTypes.UPDATE
     });
- 
+
     // 👇 NAYA — Notification bhejo
     await notifyUser(userId, notifTitle, notifBody, {
       type: "order_status_changed",
       order_id,
       status: action === "start" ? "out_for_delivery" : "delivered"
     });
- 
+
     // 👇 NAYA — WhatsApp bhejo (fire-and-forget, response block nahi hoga)
     if (userMobile) {
       sendWhatsappOrderUpdate(
@@ -2739,7 +2739,7 @@ export const updateDeliveryStatus = async (req, res) => {
         console.error("WhatsApp order update send failed:", err.message)
       );
     }
- 
+
     return res.json({
       success: true,
       message: "Order updated successfully",
