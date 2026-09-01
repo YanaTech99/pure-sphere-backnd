@@ -4,6 +4,7 @@ import { replaceNullWithBlank } from "../utils/responseHelper.js";
 import crypto from "crypto";
 import Razorpay from "razorpay";
 import { notifyUser } from "../services/notificationService.js";
+import { sendWhatsappSubscriptionThankYou } from "../services/whatsapp.service.js";
 
 
 const razorpay = new Razorpay({
@@ -1869,7 +1870,7 @@ export const verifyPayment = async (req, res) => {
        4️⃣ GET USER PLAN USING RAZORPAY ORDER ID
     ====================================================== */
     const planResult = await db.sequelize.query(
-      `SELECT id, plan_id
+      `SELECT id, plan_id, start_date, end_date
        FROM user_plans
        WHERE transaction_id = :order_id
        LIMIT 1`,
@@ -1965,6 +1966,41 @@ export const verifyPayment = async (req, res) => {
       }
     );
     await transaction.commit();
+
+    // 👇 NAYA — WhatsApp thank-you bhejo (fire-and-forget, response block nahi hoga)
+    (async () => {
+      try {
+        const userPlanDetails = await db.sequelize.query(
+          `
+          SELECT u.mobile AS user_mobile, u.name AS user_name, p.title AS plan_title
+          FROM users u
+          INNER JOIN plans p ON p.id = :plan_id
+          WHERE u.id = :user_id
+          LIMIT 1
+          `,
+          {
+            replacements: { user_id, plan_id: planRow.plan_id },
+            type: QueryTypes.SELECT,
+          }
+        );
+
+        const detail = userPlanDetails[0];
+        if (detail?.user_mobile) {
+          sendWhatsappSubscriptionThankYou(
+            detail.user_mobile,
+            detail.user_name,
+            detail.plan_title,
+            planRow.start_date,
+            planRow.end_date
+          ).catch((err) =>
+            console.error("WhatsApp subscription thank-you send failed:", err.message)
+          );
+        }
+      } catch (err) {
+        console.error("WhatsApp subscription thank-you lookup failed:", err.message);
+      }
+    })();
+
     return res.json({
       success: true,
       message: "Payment verified and stored successfully",

@@ -5,7 +5,6 @@ import { QueryTypes } from "sequelize";
 
 dotenv.config();
 
-// AOC Portal WhatsApp Business API — https://developers.aoc-portal.com/whatsapp/whatsapp-send-temp
 const WHATSAPP_API_URL = process.env.WHATSAPP_API_URL; // e.g. https://<base>/v1/whatsapp
 const WHATSAPP_API_KEY = process.env.WHATSAPP_API_KEY; // sent as `apikey` header
 const WHATSAPP_FROM_NUMBER = process.env.WHATSAPP_FROM_NUMBER; // e.g. +91XXXXXXXXXX (registered WA business number)
@@ -13,7 +12,6 @@ const WHATSAPP_FROM_NUMBER = process.env.WHATSAPP_FROM_NUMBER; // e.g. +91XXXXXX
 const isConfigured = () =>
   Boolean(WHATSAPP_API_URL && WHATSAPP_API_KEY && WHATSAPP_FROM_NUMBER);
 
-// AOC expects numbers with a leading "+" and country code, e.g. +91XXXXXXXXXX
 const formatWhatsappNumber = (phone) => {
   if (!phone) return phone;
   const digits = String(phone).replace(/\D/g, "");
@@ -21,10 +19,6 @@ const formatWhatsappNumber = (phone) => {
   return `+${digits}`;
 };
 
-/**
- * Sends a plain/body-variable WhatsApp template (no header, no buttons).
- * Matches AOC's "Template with header - None and having variables" endpoint.
- */
 export async function sendWhatsappTemplate(
   to,
   templateName,
@@ -73,10 +67,6 @@ export async function sendWhatsappTemplate(
   }
 }
 
-/**
- * Sends an OTP using AOC's dedicated "Authentication template" endpoint.
- * This endpoint takes `otp` + `language` directly instead of `components`.
- */
 export async function sendWhatsappOtp(phone, otp, languageCode = "en") {
   if (!isConfigured()) {
     console.warn("WhatsApp API not configured yet (missing env vars) — skipping send.");

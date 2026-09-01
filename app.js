@@ -6,6 +6,8 @@ import cors from "cors";
 import authRoutes from "./src/routes/auth.routes.js";
 import userRoutes from "./src/routes/user.routes.js";
 import pageRoutes from "./src/routes/page.routes.js";
+import { startCronJobs } from "./src/cron/index.js";
+
 
 
 dotenv.config();
@@ -14,6 +16,7 @@ const app = express();
 
 app.set('trust proxy', true); // 👈 ye line add karo
 
+startCronJobs();
 
 /* ================= CORS ================= */
 app.use(cors({
