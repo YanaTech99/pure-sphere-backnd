@@ -100,7 +100,7 @@ export async function sendWhatsappOtp(phone, otp, languageCode = "en") {
 }
 
 export async function sendWhatsappSubscriptionThankYou(phone, name, planName, startDate, endDate) {
-  return sendWhatsappTemplate(phone, "subscription_thank_you", "en", [
+  return sendWhatsappTemplate(phone, "subscription_thank_you_with_variable", "en", [
     name,
     planName,
     startDate,
