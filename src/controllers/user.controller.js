@@ -4,7 +4,10 @@ import { replaceNullWithBlank } from "../utils/responseHelper.js";
 import crypto from "crypto";
 import Razorpay from "razorpay";
 import { notifyUser } from "../services/notificationService.js";
-import { sendWhatsappSubscriptionThankYou } from "../services/whatsapp.service.js";
+import {
+  sendWhatsappSubscriptionThankYou,
+  sendWhatsappOrderUpdate,
+} from "../services/whatsapp.service.js";
 
 
 const razorpay = new Razorpay({
@@ -73,6 +76,7 @@ export const updateProfile = async (req, res) => {
   try {
     const userId = req.user?.id; // from authMiddleware
     if (!userId) {
+      await t.rollback();
       return res.status(401).json({
         success: false,
         message: "Unauthorized",
@@ -177,7 +181,7 @@ export const getProfile = async (req, res) => {
 
     const protocol = req.headers['x-forwarded-proto'] || req.protocol;
     const baseUrl = `${protocol}://${req.get("host")}`;
-    const baseUrl_plates = `${req.protocol}://${req.get("host")}/uploads/plates/`;
+    const baseUrl_plates = `${baseUrl}/uploads/plates/`;
 
     // 1️⃣ Basic user info
     const userRows = await db.sequelize.query(
@@ -269,9 +273,13 @@ export const getProfile = async (req, res) => {
       active_plans: active_plans,
     };
 
+    // .env se force update flag
+    const forceUpdate = process.env.FORCE_UPDATE === "true";
+
     return res.json({
       success: true,
       data: user,
+      force_update: forceUpdate,
     });
   } catch (error) {
     console.error("Get Profile Error:", error);
@@ -484,6 +492,7 @@ export const useraddressAdd = async (req, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) {
+      await transaction.rollback();
       return res.status(401).json({
         success: false,
         message: "Unauthorized",
@@ -491,6 +500,7 @@ export const useraddressAdd = async (req, res) => {
     }
     const { type = "home", address, city, state, pincode, is_default = 0 } = req.body;
     if (!address || !city || !state || !pincode) {
+      await transaction.rollback();
       return res.status(400).json({
         success: false,
         message: "All fields are required",
@@ -644,14 +654,14 @@ export const plansadd = async (req, res) => {
       });
     }
     // ===============================
-    // 🔥 ADD PLAN
+    // 🔥 ADD PLAN  (✅ category_id ab save hoga)
     // ===============================
     await db.sequelize.query(
       `
       INSERT INTO plans
-      (title, description, duration_days,plan_type, price, status, created_at)
+      (title, description, duration_days, plan_type, category_id, price, status, created_at)
       VALUES
-      (:title, :description, :duration_days,:plan_type, :price, :status, NOW())
+      (:title, :description, :duration_days, :plan_type, :category_id, :price, :status, NOW())
       `,
       {
         replacements: {
@@ -659,6 +669,7 @@ export const plansadd = async (req, res) => {
           description: description || "",
           duration_days,
           plan_type,
+          category_id,
           price,
           status: status ?? 1
         },
@@ -806,10 +817,10 @@ export const baneersadd = async (req, res) => {
           replacements: {
             id,
             title,
-            image,
             type,
             link,
-            status: status ?? 1
+            status: status ?? 1,
+            ...(image && { image })
           },
           type: QueryTypes.UPDATE
         }
@@ -1230,7 +1241,7 @@ export const plateslist = async (req, res) => {
           type: QueryTypes.SELECT,
         }
       );
-      const baseDietUrl = `${req.protocol}://${req.get("host")}/uploads/daily_diets`;
+      const baseDietUrl = `${baseUrlFinal}/uploads/daily_diets`;
       const formattedDiets = dailyDiets.map((diet) => ({
         ...diet,
         image: diet.image ? `${baseDietUrl}/${diet.image}` : null,
@@ -1351,14 +1362,14 @@ export const dailydietsadd = async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())
       `,
           {
+            // ✅ extra meal_type hata diya (6 placeholders = 6 values)
             replacements: [
               plan.id,
               plan.user_id,
               plate_id,
               dailyDietId,
               todayDate,
-              orderTimeSlot,
-              meal_type
+              orderTimeSlot
             ],
             type: QueryTypes.INSERT,
             transaction
@@ -1503,7 +1514,8 @@ export const dailydietslist = async (req, res) => {
       replacements: id ? { id } : {},
       type: QueryTypes.SELECT,
     });
-    const baseDietUrl = `${req.protocol}://${req.get("host")}/uploads/daily_diets`;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const baseDietUrl = `${protocol}://${req.get("host")}/uploads/daily_diets`;
     const formattedDiets = dailyDiets.map((diet) => ({
       ...diet,
       image: diet.image ? `${baseDietUrl}/${diet.image}` : null,
@@ -1967,7 +1979,7 @@ export const verifyPayment = async (req, res) => {
     );
     await transaction.commit();
 
-    // 👇 NAYA — WhatsApp thank-you bhejo (fire-and-forget, response block nahi hoga)
+    // 👇 WhatsApp thank-you bhejo (fire-and-forget, response block nahi hoga)
     (async () => {
       try {
         const userPlanDetails = await db.sequelize.query(
@@ -2384,7 +2396,8 @@ export const deliveryboysadd = async (req, res) => {
 /////////////////////////////////////////
 export const deliveryboysList = async (req, res) => {
   try {
-    const BASE_URL = `${req.protocol}://${req.get("host")}`;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const BASE_URL = `${protocol}://${req.get("host")}`;
     const { id, search = "" } = req.query;
     let whereCondition = `d.deleted_at IS NULL`;
     let replacements = {};
@@ -2455,7 +2468,8 @@ export const deliveryboysList = async (req, res) => {
 export const getdeliveryboyProfile = async (req, res) => {
   try {
     const deliveryBoyId = req.user.id;
-    const BASE_URL = `${req.protocol}://${req.get("host")}`;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const BASE_URL = `${protocol}://${req.get("host")}`;
     const deliveryBoy = await db.sequelize.query(
       `SELECT db.*, 
               doc.profile_image,
@@ -2593,7 +2607,8 @@ export const orderslist = async (req, res) => {
         ? `WHERE ${whereConditions.join(" AND ")}`
         : "";
 
-    const BASE_URL = `${req.protocol}://${req.get("host")}`;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const BASE_URL = `${protocol}://${req.get("host")}`;
 
     const orders = await db.sequelize.query(
       `
@@ -2679,7 +2694,7 @@ export const updateDeliveryStatus = async (req, res) => {
     }
     console.log("Update Delivery Status Body:", req.body);
 
-    // 👈 CHANGE: user_id, mobile, name bhi select kiya (WhatsApp bhejne ke liye)
+    // user_id, mobile, name bhi select kiya (WhatsApp bhejne ke liye)
     const order = await db.sequelize.query(
       `SELECT o.id, o.user_id, u.mobile, u.name
        FROM orders o
@@ -2697,13 +2712,13 @@ export const updateDeliveryStatus = async (req, res) => {
       });
     }
 
-    const userId = order[0].user_id;   // 👈 NAYA
-    const userMobile = order[0].mobile;  // 👈 NAYA
-    const userName = order[0].name || "Customer";  // 👈 NAYA
+    const userId = order[0].user_id;
+    const userMobile = order[0].mobile;
+    const userName = order[0].name || "Customer";
     let query = "";
     let replacements = [];
-    let notifTitle = "";                // 👈 NAYA
-    let notifBody = "";                 // 👈 NAYA
+    let notifTitle = "";
+    let notifBody = "";
 
     // 🚚 Start Delivery
     if (action === "start") {
@@ -2757,14 +2772,14 @@ export const updateDeliveryStatus = async (req, res) => {
       type: QueryTypes.UPDATE
     });
 
-    // 👇 NAYA — Notification bhejo
+    // 👇 Notification bhejo
     await notifyUser(userId, notifTitle, notifBody, {
       type: "order_status_changed",
       order_id,
       status: action === "start" ? "out_for_delivery" : "delivered"
     });
 
-    // 👇 NAYA — WhatsApp bhejo (fire-and-forget, response block nahi hoga)
+    // 👇 WhatsApp bhejo (fire-and-forget, response block nahi hoga)
     if (userMobile) {
       sendWhatsappOrderUpdate(
         userMobile,
@@ -2812,7 +2827,8 @@ export const dashboardapp = async (req, res) => {
       );
     }
 
-    const BASE_URL = `${req.protocol}://${req.get("host")}`;
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const BASE_URL = `${protocol}://${req.get("host")}`;
 
     // Dashboard Counts
     const dashboardCounts = await db.sequelize.query(
@@ -2822,9 +2838,7 @@ export const dashboardapp = async (req, res) => {
         AS today_total_orders,
 
         COUNT(CASE WHEN DATE(order_date) = CURDATE() 
-        AND delivery_boy_id = :delivery_boy_id
-        
-         AND delivery_boy_status = 'delivered' THEN 1 END) 
+        AND delivery_boy_id = :delivery_boy_id THEN 1 END) 
         AS today_assigned_orders,
 
         COUNT(CASE WHEN DATE(order_date) = CURDATE() 
